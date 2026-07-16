@@ -1,0 +1,5 @@
+# Root requirements for Render / servers
+# Delegates installation to the backend requirements file.
+
+-r Lantaw-TBD-Backend/lantaw/requirements.txt
+

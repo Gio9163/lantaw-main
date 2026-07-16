@@ -1,0 +1,85 @@
+# Lantaw-TBD-Backend Project Rules
+
+## Documentation Rules
+
+When creating documentation files (`.md`) in the `docs/` folder for project folders/directories, follow these rules:
+
+### File Naming
+- Name documentation files after the folder they document, in lowercase
+- Use hyphens to separate words if needed
+- File extension must be `.md`
+- Example: `lantaw/projects/` → `docs/projects.md`
+
+### Required Sections (in order)
+Each documentation file MUST include:
+
+1. **Overview**
+   - Purpose: Clear, concise statement of what the folder/module does
+   - Role in Project: How it fits into overall architecture
+   - Dependencies: List key dependencies (modules, packages)
+
+2. **Directory Structure**
+   - Visual tree structure of the folder (simplified, focusing on important files)
+   - Brief descriptions for key files and subdirectories
+
+3. **Key Components** (as applicable)
+   - **Models** (Django apps): List all models with name, purpose, key fields, relationships, important methods
+   - **Views** (Django apps): List view classes/functions with purpose, auth/permission requirements, special behaviors
+   - **Serializers** (DRF apps): List serializer classes with data handled, validation/transformation logic
+   - **URLs/API Endpoints**: List endpoints with HTTP methods, URL patterns, purpose, authentication requirements
+   - **Management Commands**: List custom commands with descriptions and usage examples
+   - **Signals**: List custom signals with trigger conditions and purpose
+   - **Tests**: Describe testing structure, test files, coverage, fixtures
+
+4. **Configuration**
+   - Important settings related to the module
+   - Environment variables used
+   - Module-specific configuration files
+
+5. **Usage Examples**
+   - Practical examples of module usage
+   - Code snippets with proper language tags
+   - Common workflows or patterns
+
+6. **Important Notes**
+   - Special considerations or gotchas
+   - Best practices specific to the module
+   - Known limitations or future improvements
+
+7. **Related Documentation**
+   - Links to related modules
+   - References to external documentation
+   - API documentation links
+
+### Writing Guidelines
+- Use clear, professional language in present tense
+- Be concise but thorough
+- Assume reader has basic Django/Python knowledge
+- Use proper Markdown syntax with hierarchical headers
+- Include code examples with proper language tags (python, bash, json, etc.)
+- Focus on concepts and architecture, not implementation minutiae
+
+### Section Requirements by Folder Type
+- **Django Apps**: Overview, Models, Views, Serializers, URLs, Tests, Usage Examples
+- **Core/Configuration**: Overview, Directory Structure, Key Files, Configuration, Usage Examples
+- **Utility/Helper**: Overview, Key Functions/Classes, Usage Examples, API Reference
+- **Management Commands**: Overview, Available Commands, Usage Examples, Parameters and Options
+
+### Quality Checklist
+Before finalizing documentation:
+- All required sections included
+- Code examples accurate and tested
+- Links work and are current
+- Grammar and spelling correct
+- Formatting consistent
+- Technical terms explained
+- File follows naming conventions
+- Directory structure accurate
+
+## Code Style
+
+- Always use Tailwind CSS for styling (no inline or raw CSS) unless explicitly asked otherwise.
+
+
+
+
