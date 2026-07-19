@@ -1,10 +1,11 @@
 """Development/presentation seed for the ReSEED-DASIG Growth Track Year 2 project."""
 
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
+from django.utils import timezone
 
 from activities.models import Activity, Objective
 from budget.models import BudgetLineItem, Compensation
@@ -12,7 +13,7 @@ from history_log.models import HistoryLog
 from history_log.services import log_history
 from personnel.models import Department, Personnel, Role
 from projects.models import BudgetItem, Project, ProjectMembers, ProjectPersonnel
-from users.models import User
+from users.models import ProjectInvitation, User
 
 
 OLD_PROJECT_NAME = (
@@ -82,6 +83,8 @@ class Command(BaseCommand):
             "compensations_found": 0,
             "compensations_updated": 0,
             "history_logs_created": 0,
+            "invitations_created": 0,
+            "invitations_updated": 0,
         }
 
         projected_total = sum(
@@ -114,6 +117,39 @@ class Command(BaseCommand):
                 raise CommandError("No active existing Admin account was found; no Admin account was created.")
 
             project, project_changed = self._ensure_project(counters)
+            invitation_expiry = timezone.make_aware(datetime(2026, 12, 31, 23, 59, 59))
+            for code, allowed_role in (
+                ("DASIG-EXEC-2026", "EXECUTIVE"),
+                ("DASIG-STAFF-2026", "PROJECT_STAFF"),
+            ):
+                invitation, created = ProjectInvitation.objects.get_or_create(
+                    code=code,
+                    defaults={
+                        "project": project,
+                        "allowed_role": allowed_role,
+                        "is_active": True,
+                        "expires_at": invitation_expiry,
+                        "max_uses": 50,
+                        "used_count": 0,
+                        "created_by": admin,
+                    },
+                )
+                changed = created
+                expected = {
+                    "project": project,
+                    "allowed_role": allowed_role,
+                    "is_active": True,
+                    "expires_at": invitation_expiry,
+                    "max_uses": 50,
+                }
+                for field, value in expected.items():
+                    if getattr(invitation, field) != value:
+                        setattr(invitation, field, value)
+                        changed = True
+                if changed and not created:
+                    invitation.save(update_fields=list(expected))
+                counters["invitations_created"] += int(created)
+                counters["invitations_updated"] += int(changed and not created)
             executive = self._ensure_user(
                 "upcebuinit@lantaw.com", "executive123", "EXECUTIVE",
                 "UP Cebu INIT", "Executive", counters,
@@ -532,6 +568,10 @@ class Command(BaseCommand):
         self.stdout.write(f"Users created: {counters['users_created']}")
         self.stdout.write(f"Users updated: {counters['users_updated']}")
         self.stdout.write(f"Project memberships created: {counters['memberships_created']}")
+        self.stdout.write(f"Registration invitations created: {counters['invitations_created']}")
+        self.stdout.write(f"Registration invitations updated: {counters['invitations_updated']}")
+        self.stdout.write("Executive invitation: DASIG-EXEC-2026")
+        self.stdout.write("Project Staff invitation: DASIG-STAFF-2026")
         self.stdout.write(f"Existing Admin access verified: {admin.email}")
         self.stdout.write(f"Departments created: {counters['departments_created']}")
         self.stdout.write(f"Roles created: {counters['roles_created']}")

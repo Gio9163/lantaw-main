@@ -70,7 +70,24 @@ class ProjectSerializer(serializers.ModelSerializer):
         return instance
 
 class ProjectMembersSerializer(serializers.ModelSerializer):
+    full_name = serializers.CharField(source='user.get_full_name', read_only=True)
+    email = serializers.EmailField(source='user.email', read_only=True)
+    system_role = serializers.CharField(source='user.role', read_only=True)
+    system_role_display = serializers.CharField(source='user.get_role_display', read_only=True)
+    membership_status = serializers.SerializerMethodField()
+    invitation_status = serializers.SerializerMethodField()
+
     class Meta:
         model = ProjectMembers
-        fields = ['id', 'user', 'project', 'date_joined']
+        fields = [
+            'id', 'user', 'project', 'full_name', 'email', 'system_role',
+            'system_role_display', 'membership_status', 'date_joined',
+            'invitation_status',
+        ]
         read_only_fields = ['date_joined']
+
+    def get_membership_status(self, obj):
+        return 'ACTIVE' if obj.user.is_active and obj.user.account_status == 'ACTIVE' else 'INACTIVE'
+
+    def get_invitation_status(self, obj):
+        return 'ACCEPTED'

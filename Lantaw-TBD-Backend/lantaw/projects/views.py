@@ -2,6 +2,7 @@ from rest_framework import viewsets, permissions
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
+from rest_framework.exceptions import PermissionDenied
 from .models import Project, ProjectMembers
 from .serializers import ProjectSerializer, ProjectMembersSerializer
 from history_log.services import log_history
@@ -29,7 +30,10 @@ class IsAdminExecutiveOrProjectStaff(permissions.BasePermission):
         if user.role == "ADMIN":
             return request.method in permissions.SAFE_METHODS
         if user.role == "EXECUTIVE":
-            return request.method in permissions.SAFE_METHODS
+            return (
+                request.method in permissions.SAFE_METHODS
+                and obj.projectmembers_set.filter(user=user).exists()
+            )
         if user.role == "PROJECT_STAFF":
             return obj.projectmembers_set.filter(user=user).exists()
         return False
@@ -57,7 +61,7 @@ class ProjectViewSet(ApprovalRequiredWriteMixin, viewsets.ModelViewSet):
         if user.role == "ADMIN":
             return Project.objects.all().order_by('id')
         elif user.role == "EXECUTIVE":
-            return Project.objects.all().order_by('id')
+            return Project.objects.filter(projectmembers__user=user).order_by('id')
         elif user.role == "PROJECT_STAFF":
             # Staff only sees projects they belong to
             qs = Project.objects.filter(projectmembers__user=user).order_by('id')
@@ -134,17 +138,25 @@ class ProjectViewSet(ApprovalRequiredWriteMixin, viewsets.ModelViewSet):
 class ProjectMembersViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = ProjectMembers.objects.all().order_by('id')
     serializer_class = ProjectMembersSerializer
-    permission_classes = [IsAdminOnly]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         """
-        Only ADMINs can see members, optionally filtered by project.
+        Admins can see members. Assigned Staff and Executives can see members
+        of their current project.
         """
         project_pk = self.kwargs.get("project_pk")
-        qs = self.queryset
+        qs = self.queryset.select_related('user', 'project')
         if project_pk:
             qs = qs.filter(project_id=project_pk)
-        return qs
+        user = self.request.user
+        if user.role == 'ADMIN':
+            return qs
+        if project_pk and user.role in ['PROJECT_STAFF', 'EXECUTIVE']:
+            if ProjectMembers.objects.filter(project_id=project_pk, user=user).exists():
+                return qs
+            raise PermissionDenied('You are not assigned to this project.')
+        return ProjectMembers.objects.none()
 
 
 @api_view(["GET"])

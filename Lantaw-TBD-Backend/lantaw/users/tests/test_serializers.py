@@ -1,6 +1,9 @@
 import pytest 
+from datetime import date, timedelta
+from django.utils import timezone
 from users.serializers import UserSerializer, RegisterSerializer, PasswordChangeSerializer
-from users.models import User
+from users.models import ProjectInvitation, RegistrationRequest, User
+from projects.models import Project
 from django.contrib.auth import get_user_model
 from rest_framework.exceptions import ValidationError
 
@@ -64,22 +67,49 @@ def test_user_serializer_update(user):
 # Check create method, password hashing, field requirements
 @pytest.mark.django_db
 def test_register_serializer_create(db):
+    admin = User.objects.create_user(
+        email="registration-admin@example.com",
+        password="AdminPass123!",
+        role="ADMIN",
+    )
+    project = Project.objects.create(
+        name="Registration Project",
+        project_leader="Project Leader",
+        date_start=date(2026, 1, 1),
+        date_end=date(2026, 12, 31),
+    )
+    invitation = ProjectInvitation.objects.create(
+        code="STAFF-CODE",
+        project=project,
+        allowed_role="PROJECT_STAFF",
+        expires_at=timezone.now() + timedelta(days=1),
+        max_uses=1,
+        created_by=admin,
+    )
     payload = {
         "first_name": "Maria",
         "last_name": "Clara",
         "email": "maria.clara@example.com",
         "password": "StrongPass123",
         "role": "ADMIN",
+        "requested_role": "PROJECT_STAFF",
+        "invitation_code": invitation.code,
     }
     serializer = RegisterSerializer(data=payload)
     assert serializer.is_valid(), serializer.errors
 
-    user = serializer.save()
+    registration_request = serializer.save()
+    user = registration_request.user
     assert user.email == payload["email"]
     assert user.check_password(payload["password"])
     assert user.first_name == payload["first_name"]
     assert user.last_name == payload["last_name"]
-    assert user.role != payload["role"]
+    assert user.role is None
+    assert user.is_active is False
+    assert user.account_status == "PENDING_APPROVAL"
+    assert registration_request.requested_role == "PROJECT_STAFF"
+    assert registration_request.status == "PENDING"
+    assert RegistrationRequest.objects.filter(user=user).count() == 1
     assert not user.is_superuser
     assert user.id is not None
 

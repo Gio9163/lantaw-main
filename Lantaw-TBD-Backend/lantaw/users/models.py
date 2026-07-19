@@ -2,6 +2,7 @@ from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import models
+from django.utils import timezone
 
 """
 Custom user manager to assert that: 
@@ -50,6 +51,8 @@ class User(AbstractUser):
 
     ACCOUNT_STATUS_CHOICES = [
         ('ACTIVE', 'Active'),
+        ('PENDING_APPROVAL', 'Pending Approval'),
+        ('REJECTED', 'Rejected'),
         ('DEACTIVATED', 'Deactivated'),
         ('SUSPENDED', 'Suspended'),
     ]  
@@ -67,6 +70,8 @@ class User(AbstractUser):
         max_length=20,
         choices=ROLE_CHOICES,
         default='PROJECT_STAFF',
+        null=True,
+        blank=True,
     ) 
 
     account_status = models.CharField(
@@ -84,3 +89,100 @@ class User(AbstractUser):
         return f"{self.first_name} {self.last_name} ({self.email})"
 
 
+REQUESTABLE_ROLE_CHOICES = [
+    ('EXECUTIVE', 'Executive'),
+    ('PROJECT_STAFF', 'Project Staff'),
+]
+
+
+class ProjectInvitation(models.Model):
+    code = models.CharField(max_length=64, unique=True)
+    email = models.EmailField(blank=True)
+    project = models.ForeignKey(
+        'projects.Project',
+        on_delete=models.CASCADE,
+        related_name='registration_invitations',
+    )
+    allowed_role = models.CharField(max_length=20, choices=REQUESTABLE_ROLE_CHOICES)
+    is_active = models.BooleanField(default=True)
+    message = models.TextField(blank=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+    max_uses = models.PositiveIntegerField(default=1)
+    used_count = models.PositiveIntegerField(default=0)
+    created_by = models.ForeignKey(
+        'User',
+        on_delete=models.PROTECT,
+        related_name='created_project_invitations',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    revoked_at = models.DateTimeField(null=True, blank=True)
+    accepted_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['code']
+
+    def is_available_for(self, requested_role, email=None, at=None, allow_accepted=False):
+        at = at or timezone.now()
+        return (
+            self.is_active
+            and self.revoked_at is None
+            and self.project_id is not None
+            and self.allowed_role == requested_role
+            and (not self.email or (email and self.email.lower() == email.lower()))
+            and (self.expires_at is None or self.expires_at > at)
+            and self.used_count < self.max_uses
+            and (allow_accepted or self.max_uses != 1 or self.accepted_at is None)
+        )
+
+    def __str__(self):
+        return f"{self.code} - {self.project} ({self.allowed_role})"
+
+
+class RegistrationRequest(models.Model):
+    STATUS_CHOICES = [
+        ('PENDING', 'Pending'),
+        ('APPROVED', 'Approved'),
+        ('REJECTED', 'Rejected'),
+    ]
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='registration_requests',
+    )
+    requested_role = models.CharField(max_length=20, choices=REQUESTABLE_ROLE_CHOICES)
+    project = models.ForeignKey(
+        'projects.Project',
+        on_delete=models.PROTECT,
+        related_name='registration_requests',
+    )
+    invitation = models.ForeignKey(
+        ProjectInvitation,
+        on_delete=models.PROTECT,
+        related_name='registration_requests',
+    )
+    existing_user = models.BooleanField(default=False)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='PENDING')
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='reviewed_registration_requests',
+    )
+    rejection_reason = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['-submitted_at', '-id']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'project'],
+                condition=models.Q(status='PENDING'),
+                name='unique_pending_registration_per_user_project',
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.user.email} - {self.requested_role} ({self.status})"

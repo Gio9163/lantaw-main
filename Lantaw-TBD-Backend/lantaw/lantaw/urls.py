@@ -18,6 +18,7 @@ from personnel.views import RoleViewSet, DepartmentViewSet, PersonnelViewSet
 from budget.views import BudgetLineItemViewSet, CompensationViewSet
 from change_requests.views import ChangeRequestViewSet
 from history_log.views import ArchivedHistoryLogViewSet, HistoryLogViewSet
+from users.views import ProjectInvitationViewSet
 
 router = routers.SimpleRouter()
 
@@ -41,6 +42,7 @@ projects_router.register(r'members', ProjectMembersViewSet, basename='project-me
 projects_router.register(r'budget-line-items', BudgetLineItemViewSet, basename='project-budgetlineitems')
 projects_router.register(r'compensations', CompensationViewSet, basename='project-compensations')
 projects_router.register(r'change-requests', ChangeRequestViewSet, basename='project-change-requests')
+projects_router.register(r'invitations', ProjectInvitationViewSet, basename='project-invitations')
 
 objectives_router = routers.NestedSimpleRouter(projects_router, r'objectives', lookup='objective')
 objectives_router.register(r'activities', ActivityViewSet, basename='objective-activities')
