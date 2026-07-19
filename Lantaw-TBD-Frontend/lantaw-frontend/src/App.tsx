@@ -12,13 +12,14 @@ import ChangeRequests from "./pages/ChangeRequests";
 import HistoryLog from "./pages/HistoryLog";
 import HistoryArchive from "./pages/HistoryArchive";
 import NotFound from "./pages/NotFound";
+import PublicProjects from "./pages/PublicProjects";
+import RegistrationRequests from "./pages/RegistrationRequests";
+
 import { ProtectedRoute } from "./routes/ProtectedRoute";
 import { RoleRoute } from "./routes/RoleRoute";
 import { AuthProvider } from "./context/AuthContext";
 import { ProjectProvider } from "./context/ProjectContext";
-import AppLayout from "../src/features/layout/components/AppLayout";
-import PublicProjects from "./pages/PublicProjects";
-import RegistrationRequests from "./pages/RegistrationRequests";
+import AppLayout from "./features/layout/components/AppLayout";
 
 function RegisterAndLogout() {
   localStorage.clear();
@@ -26,15 +27,10 @@ function RegisterAndLogout() {
 }
 
 function App() {
-  const basename =
-    typeof window !== "undefined" && window.location.pathname.startsWith("/Lantaw")
-      ? "/Lantaw"
-      : "";
-
   return (
-    <AuthProvider>
-      <ProjectProvider>
-        <BrowserRouter basename="/">
+    <BrowserRouter>
+      <AuthProvider>
+        <ProjectProvider>
           <Routes>
             {/* Public routes */}
             <Route path="/landing" element={<Landing />} />
@@ -43,7 +39,7 @@ function App() {
             <Route path="/register" element={<RegisterAndLogout />} />
             <Route path="/projects" element={<PublicProjects />} />
 
-            {/* Protected routes inside AppLayout */}
+            {/* Protected routes */}
             <Route
               element={
                 <ProtectedRoute>
@@ -52,24 +48,32 @@ function App() {
               }
             >
               <Route path="/" element={<Home />} />
+
               <Route
                 path="/activities"
                 element={
-                  <RoleRoute allowedRoles={["Admin", "Project Staff", "Executive"]}>
+                  <RoleRoute
+                    allowedRoles={["Admin", "Project Staff", "Executive"]}
+                  >
                     <Activities />
                   </RoleRoute>
                 }
               />
+
               <Route
                 path="/analytics"
                 element={
-                  <RoleRoute allowedRoles={["Admin", "Project Staff", "Executive"]}>
+                  <RoleRoute
+                    allowedRoles={["Admin", "Project Staff", "Executive"]}
+                  >
                     <Analytics />
                   </RoleRoute>
                 }
               />
+
               <Route path="/personnel" element={<Personnel />} />
               <Route path="/profile" element={<Profile />} />
+
               <Route
                 path="/change-requests"
                 element={
@@ -78,14 +82,18 @@ function App() {
                   </RoleRoute>
                 }
               />
+
               <Route
                 path="/history-log"
                 element={
-                  <RoleRoute allowedRoles={["Admin", "Project Staff", "Executive"]}>
+                  <RoleRoute
+                    allowedRoles={["Admin", "Project Staff", "Executive"]}
+                  >
                     <HistoryLog />
                   </RoleRoute>
                 }
               />
+
               <Route
                 path="/history-log/archive"
                 element={
@@ -94,6 +102,7 @@ function App() {
                   </RoleRoute>
                 }
               />
+
               <Route
                 path="/registration-requests"
                 element={
@@ -108,9 +117,9 @@ function App() {
             <Route path="/notfound" element={<NotFound />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </BrowserRouter>
-      </ProjectProvider>
-    </AuthProvider>
+        </ProjectProvider>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 
