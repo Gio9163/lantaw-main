@@ -18,6 +18,7 @@ import { AuthProvider } from "./context/AuthContext";
 import { ProjectProvider } from "./context/ProjectContext";
 import AppLayout from "../src/features/layout/components/AppLayout";
 import PublicProjects from "./pages/PublicProjects";
+import RegistrationRequests from "./pages/RegistrationRequests";
 
 function RegisterAndLogout() {
   localStorage.clear();
@@ -26,14 +27,14 @@ function RegisterAndLogout() {
 
 function App() {
   const basename =
-    typeof window !== "undefined" && window.location.pathname.startsWith("/Lantaw")
-      ? "/Lantaw"
+    typeof window !== "undefined" && window.location.pathname.startsWith("/")
+      ? "/"
       : "";
 
   return (
     <AuthProvider>
       <ProjectProvider>
-        <BrowserRouter basename={basename}>
+        <BrowserRouter basename="/">
           <Routes>
             {/* Public routes */}
             <Route path="/landing" element={<Landing />} />
@@ -90,6 +91,14 @@ function App() {
                 element={
                   <RoleRoute allowedRoles={["Admin"]}>
                     <HistoryArchive />
+                  </RoleRoute>
+                }
+              />
+              <Route
+                path="/registration-requests"
+                element={
+                  <RoleRoute allowedRoles={["Admin"]}>
+                    <RegistrationRequests />
                   </RoleRoute>
                 }
               />

@@ -1,10 +1,12 @@
 import axios from 'axios';
 import { ACCESS_TOKEN, REFRESH_TOKEN } from './constants';
 
+const apiBaseUrl = (import.meta.env.VITE_API_URL ?? '').replace(/\/+$/, '');
+
 const api = axios.create({
     // If VITE_API_URL is not set (common in local dev), keep requests relative.
     // With Vite proxy configured, "/api/..." will be forwarded to Django.
-    baseURL: import.meta.env.VITE_API_URL ?? '',
+    baseURL: apiBaseUrl,
 })
 
 // Flag to prevent multiple simultaneous refresh attempts
@@ -81,7 +83,7 @@ api.interceptors.response.use(
             try {
                 // Attempt to refresh the token (using axios directly to avoid interceptor)
                 const response = await axios.post(
-                    `${import.meta.env.VITE_API_URL ?? ''}/api/token/refresh/`,
+                    `${apiBaseUrl}/api/token/refresh/`,
                     { refresh: refreshToken }
                 );
 

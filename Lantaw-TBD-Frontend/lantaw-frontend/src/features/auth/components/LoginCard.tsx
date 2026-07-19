@@ -1,16 +1,19 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { AuthForm } from "../../../components/layout/AuthForm.tsx";
 import type { AuthFormData } from "../../../components/layout/AuthForm.tsx";
 import { Eye } from "lucide-react";
 import { Button } from "../../../components/common/button";
 import api from "../../../api/client";
 import { useAuth } from "../../../context/AuthContext";
+import { projectMembersApi } from "../../personnel/services/projectMembersApi";
+import axios from "axios";
 
 export default function LoginCard() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { setTokens } = useAuth();
 
   const handleLogin = async (data: AuthFormData) => {
@@ -23,6 +26,11 @@ export default function LoginCard() {
         password: data.password,
       });
 
+      const invitationCode = searchParams.get("invite")?.trim();
+      if (invitationCode) {
+        await projectMembersApi.acceptInvitation(invitationCode, res.data.access);
+      }
+
       // Update AuthContext immediately with new tokens
       setTokens(res.data.access, res.data.refresh);
       
@@ -30,9 +38,10 @@ export default function LoginCard() {
       setTimeout(() => {
         navigate("/");
       }, 100);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err.response?.data?.detail || "Invalid email or password.");
+      const detail = axios.isAxiosError(err) ? err.response?.data?.detail : null;
+      setError(detail || "Invalid email or password.");
     } finally {
       setIsLoading(false);
     }

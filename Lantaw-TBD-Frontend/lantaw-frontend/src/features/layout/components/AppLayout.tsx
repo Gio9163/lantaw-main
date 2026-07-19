@@ -37,6 +37,7 @@ import {
   LogOut,
   History,
   BarChart3,
+  UserCheck,
 } from "lucide-react";
 import api from "../../../api/client";
 import { useProject } from "../../../context/ProjectContext";
@@ -202,6 +203,9 @@ const AppLayout: React.FC<{ children?: React.ReactNode }> = () => {
     // Change Requests available for Admin and Project Staff
     ...(user?.role === "Admin" || user?.role === "Project Staff" 
       ? [{ name: "Change Requests", icon: FileText, path: "/change-requests" }] 
+      : []),
+    ...(user?.role === "Admin"
+      ? [{ name: "Registration Requests", icon: UserCheck, path: "/registration-requests" }]
       : []),
     // History Log available for all user types
     { name: "History Log", icon: History, path: "/history-log" },

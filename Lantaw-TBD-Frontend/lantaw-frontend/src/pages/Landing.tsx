@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../components/common/button";
+import { LandingShowcaseCollage } from "./LandingShowcaseCollage";
 import {
   Eye,
   LayoutDashboard,
@@ -8,16 +9,6 @@ import {
   BarChart3,
   ClipboardList,
 } from "lucide-react";
-import macbookImage from "../../../../Image/Macbook Lantaw.png";
-import macbookAnalyticsImage from "../../../../Image/Macbook Lantaw Analytics.png";
-import macbookCrImage from "../../../../Image/Macbook Lantaw CR.png";
-import macbookHistoryImage from "../../../../Image/Macbook Lantaw History.png";
-import macbookSignInImage from "../../../../Image/Macbook Lantaw Sign In.png";
-import iPhoneImage from "../../../../Image/iPhone Lantaw.png";
-import iPhoneAnalyticsImage from "../../../../Image/iPhone Lantaw Analytics.png";
-import iPhoneCrImage from "../../../../Image/iPhone Lantaw CR.png";
-import iPhoneHistoryImage from "../../../../Image/iPhone Lantaw History.png";
-import iPhoneSignInImage from "../../../../Image/iPhone Lantaw Sign In.png";
 
 function DecorativeWaves() {
   return (
@@ -201,107 +192,8 @@ function DecorativeWaves() {
   );
 }
 
-type RotatingCrossfadeImageProps = {
-  slides: string[];
-  startWhen: boolean;
-  reducedMotion: boolean;
-  alt: string;
-  className: string;
-  intervalMs?: number;
-  fadeMs?: number;
-};
-
-function RotatingCrossfadeImage({
-  slides,
-  startWhen,
-  reducedMotion,
-  alt,
-  className,
-  intervalMs = 3000,
-  fadeMs = 400,
-}: RotatingCrossfadeImageProps) {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [incomingIndex, setIncomingIndex] = useState(
-    slides.length > 1 ? 1 : 0,
-  );
-  const [isFading, setIsFading] = useState(false);
-
-  const slidesRef = useRef(slides);
-  useEffect(() => {
-    slidesRef.current = slides;
-    // Keep indices in-bounds if slides ever changes.
-    setCurrentIndex((prev) => Math.min(prev, Math.max(0, slides.length - 1)));
-    setIncomingIndex((prev) =>
-      slides.length <= 1 ? 0 : Math.min(prev, slides.length - 1),
-    );
-  }, [slides]);
-
-  const currentIndexRef = useRef(currentIndex);
-  useEffect(() => {
-    currentIndexRef.current = currentIndex;
-  }, [currentIndex]);
-
-  const isFadingRef = useRef(isFading);
-  useEffect(() => {
-    isFadingRef.current = isFading;
-  }, [isFading]);
-
-  useEffect(() => {
-    if (!startWhen || reducedMotion) return;
-    if (slidesRef.current.length <= 1) return;
-
-    let timeoutId: number | undefined;
-    const intervalId = window.setInterval(() => {
-      if (isFadingRef.current) return;
-
-      const slideList = slidesRef.current;
-      const current = currentIndexRef.current;
-      const next = (current + 1) % slideList.length;
-
-      setIncomingIndex(next);
-      setIsFading(true);
-
-      timeoutId = window.setTimeout(() => {
-        currentIndexRef.current = next;
-        setCurrentIndex(next);
-        setIsFading(false);
-      }, fadeMs);
-    }, intervalMs);
-
-    return () => {
-      window.clearInterval(intervalId);
-      if (timeoutId) window.clearTimeout(timeoutId);
-    };
-  }, [startWhen, reducedMotion, intervalMs, fadeMs]);
-
-  const transitionStyle = { transitionDuration: `${fadeMs}ms` };
-
-  return (
-    <div className="relative">
-      <img
-        src={slides[currentIndex]}
-        alt={alt}
-        className={className}
-      />
-
-      {slides.length > 1 ? (
-        <img
-          src={slides[incomingIndex]}
-          alt={alt}
-          aria-hidden
-          className={`${className} pointer-events-none absolute top-0 left-0 transition-opacity ${
-            isFading ? "opacity-100" : "opacity-0"
-          }`}
-          style={transitionStyle}
-        />
-      ) : null}
-    </div>
-  );
-}
-
 export default function Landing() {
   const navigate = useNavigate();
-  type DeviceView = "all" | "mobile" | "desktop";
 
   const handleLoginClick = () => navigate("/login");
   const handleProjectsClick = () => navigate("/projects");
@@ -315,16 +207,6 @@ export default function Landing() {
   const featuresSectionRef = useRef<HTMLElement | null>(null);
   const [hasRevealedFeatures, setHasRevealedFeatures] = useState(false);
   const [hasFinishedHeroIntro, setHasFinishedHeroIntro] = useState(false);
-  const [selectedDeviceView, setSelectedDeviceView] = useState<DeviceView>("all");
-  const [renderedDeviceView, setRenderedDeviceView] = useState<DeviceView>("all");
-  const [isSwitchingDeviceView, setIsSwitchingDeviceView] = useState(false);
-  const [animatedDeviceHeight, setAnimatedDeviceHeight] = useState<number | null>(
-    null,
-  );
-  const [isHeightAnimating, setIsHeightAnimating] = useState(false);
-  const [isMobileViewport, setIsMobileViewport] = useState(false);
-  const deviceContentRef = useRef<HTMLDivElement | null>(null);
-  const previousDeviceContentHeightRef = useRef<number | null>(null);
 
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   useEffect(() => {
@@ -344,103 +226,8 @@ export default function Landing() {
     return () => mediaQuery.removeListener(update);
   }, []);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const mobileQuery = window.matchMedia("(max-width: 767px)");
-    const update = () => setIsMobileViewport(mobileQuery.matches);
-    update();
-
-    if (typeof mobileQuery.addEventListener === "function") {
-      mobileQuery.addEventListener("change", update);
-      return () => mobileQuery.removeEventListener("change", update);
-    }
-
-    mobileQuery.addListener(update);
-    return () => mobileQuery.removeListener(update);
-  }, []);
-
-  const ROTATE_INTERVAL_MS = 4500;
   const HERO_ANIMATION_FINISH_MS = 900;
-  const DEVICE_SWITCH_MS = 120;
-  const effectiveDeviceView: Exclude<DeviceView, "all"> | "all" =
-    isMobileViewport && selectedDeviceView === "all" ? "mobile" : selectedDeviceView;
-  const canShowDevices = hasRevealedWhat && hasFinishedHeroIntro;
-  const showMobile = renderedDeviceView !== "desktop";
-  const showDesktop = renderedDeviceView !== "mobile";
-
-  useEffect(() => {
-    if (effectiveDeviceView === renderedDeviceView) return;
-    if (prefersReducedMotion) {
-      setRenderedDeviceView(effectiveDeviceView);
-      setIsSwitchingDeviceView(false);
-      return;
-    }
-
-    previousDeviceContentHeightRef.current =
-      deviceContentRef.current?.offsetHeight ?? null;
-    setIsSwitchingDeviceView(true);
-    const swapTimer = window.setTimeout(() => {
-      setRenderedDeviceView(effectiveDeviceView);
-      window.requestAnimationFrame(() => {
-        setIsSwitchingDeviceView(false);
-      });
-    }, DEVICE_SWITCH_MS);
-
-    return () => {
-      window.clearTimeout(swapTimer);
-    };
-  }, [effectiveDeviceView, renderedDeviceView, prefersReducedMotion]);
-
-  useEffect(() => {
-    if (!canShowDevices) return;
-    if (!deviceContentRef.current) return;
-
-    const toHeight = deviceContentRef.current.offsetHeight;
-    if (!toHeight) return;
-
-    // Apply measured height animation only on mobile.
-    if (!isMobileViewport || prefersReducedMotion) {
-      setAnimatedDeviceHeight(null);
-      setIsHeightAnimating(false);
-      previousDeviceContentHeightRef.current = null;
-      return;
-    }
-
-    const fromHeight = previousDeviceContentHeightRef.current ?? toHeight;
-    setIsHeightAnimating(true);
-    setAnimatedDeviceHeight(fromHeight);
-
-    const rafId = window.requestAnimationFrame(() => {
-      setAnimatedDeviceHeight(toHeight);
-    });
-
-    return () => {
-      window.cancelAnimationFrame(rafId);
-    };
-  }, [canShowDevices, renderedDeviceView, isMobileViewport, prefersReducedMotion]);
-
-  const macbookSlides = useMemo(
-    () => [
-      macbookImage,
-      macbookAnalyticsImage,
-      macbookCrImage,
-      macbookHistoryImage,
-      macbookSignInImage,
-    ],
-    [],
-  );
-
-  const iPhoneSlides = useMemo(
-    () => [
-      iPhoneImage,
-      iPhoneAnalyticsImage,
-      iPhoneCrImage,
-      iPhoneHistoryImage,
-      iPhoneSignInImage,
-    ],
-    [],
-  );
+  const canShowShowcase = hasRevealedWhat && hasFinishedHeroIntro;
 
   useEffect(() => {
     if (!whatSectionRef.current) return;
@@ -599,124 +386,7 @@ export default function Landing() {
           </svg>
         </div>
         <div className="max-w-7xl mx-auto">
-          <div
-            className={[
-              "overflow-hidden",
-              isMobileViewport ? "transition-[height] duration-300 ease-out" : "",
-              "motion-reduce:transition-none",
-            ].join(" ")}
-            style={{
-              height:
-                isMobileViewport && animatedDeviceHeight !== null
-                  ? `${animatedDeviceHeight}px`
-                  : undefined,
-            }}
-            onTransitionEnd={(event) => {
-              if (event.propertyName !== "height") return;
-              if (!isHeightAnimating) return;
-              setIsHeightAnimating(false);
-              setAnimatedDeviceHeight(null);
-              previousDeviceContentHeightRef.current = null;
-            }}
-          >
-            <div
-              ref={deviceContentRef}
-              className={[
-                "w-full gap-8 md:gap-10 items-center md:min-h-[640px]",
-                showMobile && showDesktop
-                  ? "grid grid-cols-1 md:grid-cols-[0.8fr_1.2fr]"
-                  : "grid grid-cols-1 place-items-center",
-                "origin-center transition-all duration-300 ease-out",
-                canShowDevices
-                  ? isSwitchingDeviceView
-                    ? isMobileViewport
-                      ? "opacity-85 translate-y-1 scale-[0.985]"
-                      : "opacity-95 translate-y-1"
-                    : "opacity-100 translate-y-0 scale-100"
-                  : "opacity-0 translate-y-2",
-                "motion-reduce:opacity-100 motion-reduce:translate-y-0 motion-reduce:transition-none",
-              ].join(" ")}
-            >
-              {showMobile ? (
-                <div className="flex flex-col items-center gap-3">
-                  <p className="text-sm md:text-base font-semibold text-primary-foreground/90">
-                    Lantaw on Mobile
-                  </p>
-                  <RotatingCrossfadeImage
-                    slides={iPhoneSlides}
-                    startWhen={canShowDevices}
-                    reducedMotion={prefersReducedMotion}
-                    alt="Lantaw mobile preview"
-                    className="w-full max-w-64 h-auto rounded-md"
-                    intervalMs={ROTATE_INTERVAL_MS}
-                  />
-                </div>
-              ) : null}
-              {showDesktop ? (
-                <div className="flex flex-col items-center gap-3">
-                  <p className="text-sm md:text-base font-semibold text-primary-foreground/90 text-center">
-                    Lantaw on Desktop
-                  </p>
-                  <RotatingCrossfadeImage
-                    slides={macbookSlides}
-                    startWhen={canShowDevices}
-                    reducedMotion={prefersReducedMotion}
-                    alt="Lantaw app preview"
-                    className={`w-full h-auto rounded-md ${
-                      showDesktop && !showMobile ? "max-w-5xl" : "max-w-4xl"
-                    }`}
-                    intervalMs={ROTATE_INTERVAL_MS}
-                  />
-                </div>
-              ) : null}
-            </div>
-          </div>
-          <div className="mt-8 flex justify-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary-foreground/30 bg-primary-foreground/10 p-1.5">
-              <button
-                type="button"
-                onClick={() => setSelectedDeviceView("all")}
-                className={[
-                  "hidden md:inline-flex px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-200 ease-out",
-                  "hover:-translate-y-px active:scale-[0.98]",
-                  "motion-reduce:transition-none motion-reduce:transform-none",
-                  selectedDeviceView === "all"
-                    ? "bg-primary-foreground text-primary shadow-sm"
-                    : "text-primary-foreground/90 hover:bg-primary-foreground/15",
-                ].join(" ")}
-              >
-                All
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedDeviceView("mobile")}
-                className={[
-                  "px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-200 ease-out",
-                  "hover:-translate-y-px active:scale-[0.98]",
-                  "motion-reduce:transition-none motion-reduce:transform-none",
-                  selectedDeviceView === "mobile"
-                    ? "bg-primary-foreground text-primary shadow-sm"
-                    : "text-primary-foreground/90 hover:bg-primary-foreground/15",
-                ].join(" ")}
-              >
-                Mobile
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedDeviceView("desktop")}
-                className={[
-                  "px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-200 ease-out",
-                  "hover:-translate-y-px active:scale-[0.98]",
-                  "motion-reduce:transition-none motion-reduce:transform-none",
-                  selectedDeviceView === "desktop"
-                    ? "bg-primary-foreground text-primary shadow-sm"
-                    : "text-primary-foreground/90 hover:bg-primary-foreground/15",
-                ].join(" ")}
-              >
-                Desktop
-              </button>
-            </div>
-          </div>
+          <LandingShowcaseCollage isVisible={canShowShowcase} />
         </div>
       </section>
 
@@ -819,4 +489,3 @@ export default function Landing() {
     </div>
   );
 }
-

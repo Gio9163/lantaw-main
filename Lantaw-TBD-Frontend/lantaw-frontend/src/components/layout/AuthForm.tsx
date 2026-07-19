@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "../../components/common/button";
 import { Input } from "../../components/common/input";
 import { Label } from "../../components/common/label";
@@ -10,6 +10,9 @@ interface AuthFormProps {
   type: AuthFormType;
   onSubmit: (data: AuthFormData) => void;
   isLoading?: boolean;
+  invitationDefaults?: Partial<AuthFormData>;
+  invitationProjectName?: string;
+  lockInvitationFields?: boolean;
 }
 
 export interface AuthFormData {
@@ -18,20 +21,37 @@ export interface AuthFormData {
   firstName?: string;
   lastName?: string;
   confirmPassword?: string;
+  requestedRole?: "PROJECT_STAFF" | "EXECUTIVE" | "";
+  invitationCode?: string;
 }
 
-export function AuthForm({ type, onSubmit, isLoading = false }: AuthFormProps) {
+export function AuthForm({
+  type,
+  onSubmit,
+  isLoading = false,
+  invitationDefaults,
+  invitationProjectName,
+  lockInvitationFields = false,
+}: AuthFormProps) {
   const [formData, setFormData] = useState<AuthFormData>({
     email: "",
     password: "",
     firstName: "",
     lastName: "",
     confirmPassword: "",
+    requestedRole: "",
+    invitationCode: "",
   });
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (invitationDefaults) {
+      setFormData((previous) => ({ ...previous, ...invitationDefaults }));
+    }
+  }, [invitationDefaults]);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -57,6 +77,12 @@ export function AuthForm({ type, onSubmit, isLoading = false }: AuthFormProps) {
       }
       if (!formData.lastName) {
         newErrors.lastName = "Last name is required";
+      }
+      if (!formData.requestedRole) {
+        newErrors.requestedRole = "Requested role is required";
+      }
+      if (!formData.invitationCode?.trim()) {
+        newErrors.invitationCode = "Project invitation code is required";
       }
 
       if (!formData.confirmPassword) {
@@ -134,6 +160,7 @@ export function AuthForm({ type, onSubmit, isLoading = false }: AuthFormProps) {
           onChange={(e) => handleInputChange("email", e.target.value)}
           className={errors.email ? "border-destructive" : ""}
           disabled={isLoading}
+          readOnly={type === "register" && lockInvitationFields}
           autoComplete={type === "login" ? "username" : "email"}
         />
         {errors.email && (
@@ -175,6 +202,62 @@ export function AuthForm({ type, onSubmit, isLoading = false }: AuthFormProps) {
           <p className="text-sm text-destructive">{errors.password}</p>
         )}
       </div>
+
+      {type === "register" && (
+        <>
+          {invitationProjectName && (
+            <div className="rounded-md border bg-muted/30 p-3 text-sm">
+              <span className="text-muted-foreground">Invited Project:</span>{" "}
+              {invitationProjectName}
+            </div>
+          )}
+          <div className="space-y-2">
+            <Label htmlFor="requestedRole">Requested Role</Label>
+            <select
+              id="requestedRole"
+              value={formData.requestedRole}
+              onChange={(event) =>
+                handleInputChange("requestedRole", event.target.value)
+              }
+              className={`flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm ${
+                errors.requestedRole ? "border-destructive" : "border-input"
+              }`}
+              disabled={isLoading || lockInvitationFields}
+            >
+              <option value="">Select a role</option>
+              <option value="PROJECT_STAFF">Project Staff</option>
+              <option value="EXECUTIVE">Executive</option>
+            </select>
+            {errors.requestedRole && (
+              <p className="text-sm text-destructive">{errors.requestedRole}</p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Choose the role you are requesting. Your account and project access
+              will require Administrator approval.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="invitationCode">Project Invitation Code</Label>
+            <Input
+              id="invitationCode"
+              type="text"
+              placeholder="Enter your invitation code"
+              value={formData.invitationCode}
+              onChange={(event) =>
+                handleInputChange("invitationCode", event.target.value)
+              }
+              className={errors.invitationCode ? "border-destructive" : ""}
+              disabled={isLoading}
+              readOnly={lockInvitationFields}
+              autoComplete="off"
+            />
+            {errors.invitationCode && (
+              <p className="text-sm text-destructive">{errors.invitationCode}</p>
+            )}
+          </div>
+        </>
+      )}
 
       {type === "register" && (
         <div className="space-y-2">

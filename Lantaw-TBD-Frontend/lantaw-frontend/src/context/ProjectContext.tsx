@@ -4,6 +4,7 @@ import { CURRENT_PROJECT } from "../api/constants";
 import type { Project } from "../types/project";
 import api from "../api/client";
 import { normalizeProjectStatus } from "../utils/projectStatusUtils";
+import { useAuth } from "./AuthContext";
 interface ProjectContextType {
   currentProject: Project | null;
   setCurrentProject: (project: Project) => void;
@@ -15,6 +16,7 @@ interface ProjectContextType {
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 
 export const ProjectProvider = ({ children }: { children: ReactNode }) => {
+  const { isAuthenticated, loading: authLoading } = useAuth();
   const [currentProject, setCurrentProjectState] = useState<Project | null>(
     () => {
       const saved = localStorage.getItem(CURRENT_PROJECT);
@@ -34,7 +36,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const projectId = currentProject?.id;
-    if (!projectId) return;
+    if (authLoading || !isAuthenticated || !projectId) return;
 
     let cancelled = false;
     const refreshCachedProject = async () => {
@@ -53,7 +55,7 @@ export const ProjectProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       cancelled = true;
     };
-  }, [currentProject?.id]);
+  }, [authLoading, isAuthenticated, currentProject?.id]);
 
   // Implementation of refetchProject
   const refetchProject = async (projectId: number): Promise<void> => {

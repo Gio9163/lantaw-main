@@ -20,6 +20,8 @@ import { useChangeRequests } from "../../change-requests/hooks/useChangeRequests
 import { PersonnelHeader } from "./PersonnelHeader";
 import { PersonnelFilters } from "./PersonnelFilters";
 import { PersonnelAccordion } from "./PersonnelAccordion";
+import { ProjectMembersTab } from "./ProjectMembersTab";
+import { Button } from "../../../components/common/button";
 
 // Modals
 import { AddPersonnelModal } from "./modals/AddPersonnelModal";
@@ -34,6 +36,7 @@ import type { Personnel } from "../../../types/personnel";
 import type { Compensation } from "../../../types/compensation";
 
 const PersonnelLayout = () => {
+  const [activeSection, setActiveSection] = useState<"PERSONNEL" | "MEMBERS">("PERSONNEL");
   // Hooks
   const { currentProject } = useProject();
   const { user } = useAuth();
@@ -652,6 +655,23 @@ const PersonnelLayout = () => {
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
+      <div className="flex gap-2 border-b pb-3">
+        <Button
+          variant={activeSection === "PERSONNEL" ? "default" : "outline"}
+          onClick={() => setActiveSection("PERSONNEL")}
+        >
+          Personnel
+        </Button>
+        <Button
+          variant={activeSection === "MEMBERS" ? "default" : "outline"}
+          onClick={() => setActiveSection("MEMBERS")}
+        >
+          Project Members
+        </Button>
+      </div>
+
+      {activeSection === "PERSONNEL" ? (
+      <>
       {/* Header */}
       <PersonnelHeader
         projectName={currentProject.name}
@@ -815,6 +835,14 @@ const PersonnelLayout = () => {
             await personnel.fetchPersonnel();
             await fetchCompensation();
           }}
+        />
+      )}
+      </>
+      ) : (
+        <ProjectMembersTab
+          projectId={currentProject.id}
+          projectName={currentProject.name}
+          user={user}
         />
       )}
     </div>

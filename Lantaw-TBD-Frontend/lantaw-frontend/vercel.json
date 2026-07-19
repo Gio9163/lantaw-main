@@ -2,9 +2,10 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "rewrites": [
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+   "rewrites": [
     {
-      "source": "/(.*)",
+       "source": "/(.*)",
       "destination": "/index.html"
     }
   ]
