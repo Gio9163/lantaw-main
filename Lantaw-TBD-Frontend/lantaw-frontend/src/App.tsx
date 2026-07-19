@@ -27,8 +27,8 @@ function RegisterAndLogout() {
 
 function App() {
   const basename =
-    typeof window !== "undefined" && window.location.pathname.startsWith("/")
-      ? "/"
+    typeof window !== "undefined" && window.location.pathname.startsWith("/Lantaw")
+      ? "/Lantaw"
       : "";
 
   return (
