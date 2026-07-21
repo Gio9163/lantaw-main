@@ -361,7 +361,7 @@ class RegistrationRequestViewSet(viewsets.ReadOnlyModelViewSet):
         try:
             return (
                 RegistrationRequest.objects.select_for_update()
-                .select_related("user", "project", "invitation", "reviewed_by")
+                .select_related("user", "project", "invitation")
                 .get(pk=pk)
             )
         except RegistrationRequest.DoesNotExist:
