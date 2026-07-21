@@ -1,7 +1,14 @@
 import axios from 'axios';
 import { ACCESS_TOKEN, REFRESH_TOKEN } from './constants';
 
-const apiBaseUrl = (import.meta.env.VITE_API_URL ?? '').replace(/\/+$/, '');
+const LIVE_PRODUCTION_API_URL = 'https://lantaw-main-bhn6.onrender.com';
+const OBSOLETE_PRODUCTION_API_URL = 'https://lantaw-api.onrender.com';
+const configuredApiUrl = (import.meta.env.VITE_API_URL ?? '').replace(/\/+$/, '');
+const apiBaseUrl = import.meta.env.PROD && (
+    !configuredApiUrl || configuredApiUrl === OBSOLETE_PRODUCTION_API_URL
+)
+    ? LIVE_PRODUCTION_API_URL
+    : configuredApiUrl;
 
 const api = axios.create({
     // If VITE_API_URL is not set (common in local dev), keep requests relative.
