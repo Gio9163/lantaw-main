@@ -110,14 +110,23 @@ class HistoryLogArchiveFlowTests(TestCase):
         self.assertEqual(deleted.status_code, 204)
         self.assertFalse(ArchivedHistoryLog.objects.filter(pk=archived_id).exists())
 
-    def test_scheduled_purge_uses_archived_at_and_preserves_active_logs(self):
-        active_log = HistoryLog.objects.create(
+    def test_scheduled_retention_archives_after_seven_days_and_purges_after_thirty(self):
+        due_active_log = HistoryLog.objects.create(
             timestamp=timezone.now() - timezone.timedelta(days=60),
             user=self.admin,
             action="UPDATE",
             change_type="PROJECT",
             module="PROJECT",
             description="Old active history entry",
+            project=self.project,
+        )
+        recent_active_log = HistoryLog.objects.create(
+            timestamp=timezone.now() - timezone.timedelta(days=6),
+            user=self.admin,
+            action="UPDATE",
+            change_type="PROJECT",
+            module="PROJECT",
+            description="Recent active history entry",
             project=self.project,
         )
         old_archive = ArchivedHistoryLog.objects.create(
@@ -148,9 +157,20 @@ class HistoryLogArchiveFlowTests(TestCase):
 
         self.assertFalse(ArchivedHistoryLog.objects.filter(pk=old_archive.pk).exists())
         self.assertTrue(ArchivedHistoryLog.objects.filter(pk=recent_archive.pk).exists())
-        self.assertTrue(HistoryLog.objects.filter(pk=active_log.pk).exists())
+        self.assertFalse(HistoryLog.objects.filter(pk=due_active_log.pk).exists())
+        self.assertTrue(HistoryLog.objects.filter(pk=recent_active_log.pk).exists())
+        moved_entry = ArchivedHistoryLog.objects.get(
+            description="Old active history entry"
+        )
+        self.assertEqual(moved_entry.timestamp, due_active_log.timestamp)
+        self.assertEqual(moved_entry.project, self.project)
+        self.assertIn("Archived 1 history log entries.", output.getvalue())
         self.assertIn("Purged 1 archived history log entries.", output.getvalue())
 
-    def test_scheduled_purge_rejects_unsafe_retention(self):
+    def test_scheduled_retention_rejects_unsafe_periods(self):
+        with self.assertRaises(CommandError):
+            call_command("archive_history_logs", archive_days=0)
         with self.assertRaises(CommandError):
             call_command("archive_history_logs", purge_days=0)
+        with self.assertRaises(CommandError):
+            call_command("archive_history_logs", archive_days=30, purge_days=30)
