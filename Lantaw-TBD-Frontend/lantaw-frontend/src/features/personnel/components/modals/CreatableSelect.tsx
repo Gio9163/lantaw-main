@@ -20,7 +20,7 @@ interface CreatableSelectProps {
   label: string; // (Role, Department)
   options: SelectOption[]; // The list of items
   value?: number | string | null; // The selected ID
-  onChange: (value: any) => void; // Pass the ID back to parent
+  onChange: (value: number) => void; // Pass the ID back to parent
   onCreate: (name: string) => Promise<SelectOption | null>; // Function to create new item
   disabled?: boolean;
   placeholder?: string;
@@ -112,7 +112,7 @@ export function CreatableSelect({
           } else {
             const isNumeric =
               options.length > 0 && typeof options[0].id === "number";
-            onChange(isNumeric ? parseInt(val, 10) : val);
+            onChange(isNumeric ? parseInt(val, 10) : Number(val));
           }
         }}
         disabled={disabled}

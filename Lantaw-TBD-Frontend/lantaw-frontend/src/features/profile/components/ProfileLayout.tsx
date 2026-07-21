@@ -118,7 +118,7 @@ const ProfileLayout = () => {
               {/* Role Badge */}
               <div className="flex flex-wrap items-center gap-2">
                 <Badge
-                  variant={getRoleBadgeColor() as any}
+                  variant={getRoleBadgeColor()}
                   className={`flex items-center gap-1.5 shrink-0 ${
                     user.role === "Admin"
                       ? "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400"

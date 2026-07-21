@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import type { Compensation } from "../../../types/compensation";
 import { compensationApi } from "../services/personnelApi";
+import { getApiErrorData, getApiErrorMessage } from "../../../utils/apiError";
 
 interface UseCompensationReturn {
     //Data
@@ -78,14 +79,10 @@ export const useCompensation = (projectId: number): UseCompensationReturn => {
                 const newCompensation = await compensationApi.create(projectId, data);
                 setCompensation((prev) => [...prev, newCompensation]);
                 return newCompensation;
-            } catch (err: any) {
+            } catch (err: unknown) {
                 console.error("Failed to add compensation item:", err);
-                console.error("Error response:", err?.response?.data);
-                const errorMessage = err?.response?.data 
-                    ? (typeof err.response.data === 'string' 
-                        ? err.response.data 
-                        : JSON.stringify(err.response.data))
-                    : err?.message || "Failed to add compensation item";
+                console.error("Error response:", getApiErrorData(err));
+                const errorMessage = getApiErrorMessage(err, "Failed to add compensation item");
                 const error = new Error(errorMessage);
                 setError(error);
                 throw error;

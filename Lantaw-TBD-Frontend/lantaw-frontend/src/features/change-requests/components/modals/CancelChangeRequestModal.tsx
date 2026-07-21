@@ -13,6 +13,7 @@ import { Label } from "../../../../components/common/label";
 import { AlertCircle } from "lucide-react";
 import type { ChangeRequest } from "../../../../types/changeRequest";
 import { getChangeTypeDisplayName } from "../../utils/statusHelpers";
+import { getApiErrorMessage } from "../../../../utils/apiError";
 
 interface CancelChangeRequestModalProps {
   open: boolean;
@@ -41,8 +42,8 @@ export const CancelChangeRequestModal: React.FC<CancelChangeRequestModalProps> =
       await onCancel(cancelReason);
       setCancelReason("");
       onOpenChange(false);
-    } catch (err: any) {
-      setError(err.response?.data?.error || err.message || "Failed to cancel change request");
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, "Failed to cancel change request"));
     } finally {
       setLoading(false);
     }
@@ -147,4 +148,3 @@ export const CancelChangeRequestModal: React.FC<CancelChangeRequestModalProps> =
     </Dialog>
   );
 };
-

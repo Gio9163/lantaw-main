@@ -14,6 +14,7 @@ import { Input } from "../../../../components/common/input";
 import { Label } from "../../../../components/common/label";
 import { TextArea } from "../../../../components/common/textarea";
 import type { Objective } from "../../../../types/objective";
+import { getApiErrorMessage } from "../../../../utils/apiError";
 
 interface ObjectiveModalProps {
   isOpen: boolean;
@@ -58,9 +59,9 @@ export const ObjectiveModal: React.FC<ObjectiveModalProps> = ({
     try {
       await onSubmit(formData);
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to save objective:", error);
-      setError(error?.message || "Failed to save objective. Please try again.");
+      setError(getApiErrorMessage(error, "Failed to save objective. Please try again."));
     } finally {
       setIsSubmitting(false);
     }

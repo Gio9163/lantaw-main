@@ -62,7 +62,7 @@ export const BudgetBreakdownChart: React.FC<BudgetBreakdownChartProps> = ({
             ))}
           </Pie>
           <Tooltip
-            formatter={(value: number, name: string, props: any) => [
+            formatter={(value: number, name: string, props) => [
               hideFinancialValues ? "---" : `₱${value.toLocaleString()}`,
               `${name} (${props.payload.percentage}%)`,
             ]}

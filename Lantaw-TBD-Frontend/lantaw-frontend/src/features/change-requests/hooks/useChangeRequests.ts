@@ -65,7 +65,7 @@ export const useChangeRequests = (projectId?: number | null): UseChangeRequestsR
     } finally {
       setLoading(false);
     }
-  }, [user, projectId]);
+  }, [user]);
 
   // Fetch single change request
   const fetchChangeRequestById = useCallback(async (
@@ -222,4 +222,3 @@ export const useChangeRequests = (projectId?: number | null): UseChangeRequestsR
     error,
   };
 };
-

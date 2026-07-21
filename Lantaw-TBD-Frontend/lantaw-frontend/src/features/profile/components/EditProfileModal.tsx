@@ -12,6 +12,7 @@ import { Button } from "../../../components/common/button";
 import { Label } from "../../../components/common/label";
 import { Input } from "../../../components/common/input";
 import api from "../../../api/client";
+import { getApiErrorData, getApiErrorField } from "../../../utils/apiError";
 
 interface EditProfileModalProps {
   isOpen: boolean;
@@ -105,33 +106,24 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
       // Refresh the page to get updated user data
       window.location.reload();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error updating profile:", err);
-      const errorData = err.response?.data;
+      const errorData = getApiErrorData(err);
 
       // Handle validation errors from backend
       if (errorData) {
         const newErrors: Record<string, string> = {};
-        if (errorData.email) {
-          newErrors.email = Array.isArray(errorData.email)
-            ? errorData.email[0]
-            : errorData.email;
-        }
-        if (errorData.first_name) {
-          newErrors.first_name = Array.isArray(errorData.first_name)
-            ? errorData.first_name[0]
-            : errorData.first_name;
-        }
-        if (errorData.last_name) {
-          newErrors.last_name = Array.isArray(errorData.last_name)
-            ? errorData.last_name[0]
-            : errorData.last_name;
-        }
+        const emailError = getApiErrorField(errorData, "email");
+        const firstNameError = getApiErrorField(errorData, "first_name");
+        const lastNameError = getApiErrorField(errorData, "last_name");
+        if (emailError) newErrors.email = emailError;
+        if (firstNameError) newErrors.first_name = firstNameError;
+        if (lastNameError) newErrors.last_name = lastNameError;
         if (Object.keys(newErrors).length > 0) {
           setErrors(newErrors);
         } else {
           setErrors({
-            general: errorData.detail || "Failed to update profile. Please try again.",
+            general: getApiErrorField(errorData, "detail") || "Failed to update profile. Please try again.",
           });
         }
       } else {
@@ -230,4 +222,3 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
 };
 
 export default EditProfileModal;
-

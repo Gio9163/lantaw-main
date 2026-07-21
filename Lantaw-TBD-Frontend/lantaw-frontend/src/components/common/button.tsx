@@ -55,4 +55,6 @@ function Button({
   );
 }
 
+// The variant factory is intentionally colocated with the component for shared styling.
+// eslint-disable-next-line react-refresh/only-export-components
 export { Button, buttonVariants };

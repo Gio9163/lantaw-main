@@ -12,6 +12,7 @@ import { Label } from "../../../components/common/label";
 import { Input } from "../../../components/common/input";
 import { Eye, EyeOff } from "lucide-react";
 import api from "../../../api/client";
+import { getApiErrorData, getApiErrorField } from "../../../utils/apiError";
 
 interface ChangePasswordModalProps {
   isOpen: boolean;
@@ -110,29 +111,24 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
         onClose();
         setSuccessMessage("");
       }, 1500);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error changing password:", err);
-      const errorData = err.response?.data;
+      const errorData = getApiErrorData(err);
 
       // Handle validation errors from backend
       if (errorData) {
         const newErrors: Record<string, string> = {};
-        if (errorData.old_password) {
-          newErrors.old_password = Array.isArray(errorData.old_password)
-            ? errorData.old_password[0]
-            : errorData.old_password;
-        }
-        if (errorData.new_password) {
-          newErrors.new_password = Array.isArray(errorData.new_password)
-            ? errorData.new_password[0]
-            : errorData.new_password;
-        }
-        if (errorData.detail) {
+        const oldPasswordError = getApiErrorField(errorData, "old_password");
+        const newPasswordError = getApiErrorField(errorData, "new_password");
+        const detail = getApiErrorField(errorData, "detail");
+        if (oldPasswordError) newErrors.old_password = oldPasswordError;
+        if (newPasswordError) newErrors.new_password = newPasswordError;
+        if (detail) {
           // Backend might return a general error message
-          if (errorData.detail.includes("Old password")) {
-            newErrors.old_password = errorData.detail;
+          if (detail.includes("Old password")) {
+            newErrors.old_password = detail;
           } else {
-            newErrors.general = errorData.detail;
+            newErrors.general = detail;
           }
         }
         if (Object.keys(newErrors).length > 0) {
@@ -296,4 +292,3 @@ const ChangePasswordModal: React.FC<ChangePasswordModalProps> = ({
 };
 
 export default ChangePasswordModal;
-

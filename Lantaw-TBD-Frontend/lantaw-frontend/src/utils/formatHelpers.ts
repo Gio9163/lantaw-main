@@ -1,5 +1,6 @@
 // Helper function to check if financial values should be hidden for executives
-export const shouldHideFinancialValues = (_userRole?: string): boolean => {
+export const shouldHideFinancialValues = (userRole?: string): boolean => {
+  void userRole;
   return false; // Executives can now view amounts
 };
 

@@ -7,10 +7,10 @@ import api from "../../../api/client";
 import { useAuth } from "../../../context/AuthContext";
 
 interface ProposedChangesPreviewProps {
-  proposedChanges: Record<string, any>;
+  proposedChanges: Record<string, unknown>;
   changeType: string;
   operation: 'CREATE' | 'UPDATE' | 'DELETE' | 'ASSIGN' | 'APPROVE' | 'REJECT' | 'CANCEL' | 'LOGIN' | 'LOGOUT';
-  currentState?: Record<string, any> | null;
+  currentState?: Record<string, unknown> | null;
   projectId?: number;
 }
 
@@ -45,8 +45,8 @@ export const ProposedChangesPreview: React.FC<ProposedChangesPreviewProps> = ({
   }, [changeType, projectId]);
 
   // Helper to resolve personnel ID to full name
-  const getPersonnelName = (personnelId: number | string | null | undefined): string => {
-    if (!personnelId) return "Not set";
+  const getPersonnelName = (personnelId: unknown): string => {
+    if (typeof personnelId !== "number" && typeof personnelId !== "string") return "Not set";
     const id = typeof personnelId === 'string' ? parseInt(personnelId) : personnelId;
     const person = personnelList.find(p => p.id === id);
     if (person) {
@@ -55,7 +55,7 @@ export const ProposedChangesPreview: React.FC<ProposedChangesPreviewProps> = ({
     return `#${id}`;
   };
   // Render field value based on type
-  const renderFieldValue = (key: string, value: any): React.ReactNode => {
+  const renderFieldValue = (key: string, value: unknown): React.ReactNode => {
     if (value === null || value === undefined || value === "") {
       return <span className="text-muted-foreground italic">Not set</span>;
     }
@@ -63,7 +63,7 @@ export const ProposedChangesPreview: React.FC<ProposedChangesPreviewProps> = ({
     // Handle dates
     if (key.includes("date") || key.includes("Date")) {
       try {
-        return new Date(value).toLocaleDateString();
+        return new Date(String(value)).toLocaleDateString();
       } catch {
         return String(value);
       }
@@ -71,7 +71,7 @@ export const ProposedChangesPreview: React.FC<ProposedChangesPreviewProps> = ({
 
     // Handle amounts/expenses
     if (key.includes("expense") || key.includes("amount") || key.includes("grant")) {
-      const numValue = typeof value === "string" ? parseFloat(value) : value;
+      const numValue = typeof value === "number" ? value : typeof value === "string" ? parseFloat(value) : Number.NaN;
       if (!isNaN(numValue)) {
         return formatCurrency(numValue, hideFinancialValues);
       }
@@ -144,7 +144,7 @@ export const ProposedChangesPreview: React.FC<ProposedChangesPreviewProps> = ({
   };
 
   // Render fields in a structured way
-  const renderFields = (fields: Record<string, any>, title: string, variant: "current" | "proposed" = "proposed") => {
+  const renderFields = (fields: Record<string, unknown>, title: string, variant: "current" | "proposed" = "proposed") => {
     if (!fields || Object.keys(fields).length === 0) {
       return null;
     }
@@ -228,7 +228,7 @@ export const ProposedChangesPreview: React.FC<ProposedChangesPreviewProps> = ({
                 <div key={key}>
                   <Label className="text-xs text-muted-foreground">Personnel</Label>
                   <div className="text-sm font-medium mt-1">
-                    {value || "Not set"}
+                    {value === null || value === undefined || value === "" ? "Not set" : String(value)}
                   </div>
                 </div>
               );
@@ -293,4 +293,3 @@ export const ProposedChangesPreview: React.FC<ProposedChangesPreviewProps> = ({
 
   return null;
 };
-

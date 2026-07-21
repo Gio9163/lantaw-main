@@ -13,6 +13,7 @@ import { Label } from "../../../components/common/label";
 import { AlertCircle } from "lucide-react";
 import type { ChangeRequestCreateData } from "../../../types/changeRequest";
 import { ProposedChangesPreview } from "./ProposedChangesPreview";
+import { getApiErrorMessage } from "../../../utils/apiError";
 
 interface SubmitChangeRequestModalProps {
   open: boolean;
@@ -21,8 +22,8 @@ interface SubmitChangeRequestModalProps {
   changeType: ChangeRequestCreateData['change_type'];
   operation: ChangeRequestCreateData['operation'];
   entityId?: number | null;
-  currentState?: Record<string, any> | null;
-  proposedChanges: Record<string, any>;
+  currentState?: Record<string, unknown> | null;
+  proposedChanges: Record<string, unknown>;
   onSubmit: (data: ChangeRequestCreateData) => Promise<void>;
   customTitle?: string;
 }
@@ -66,16 +67,8 @@ export const SubmitChangeRequestModal: React.FC<SubmitChangeRequestModalProps> =
       onOpenChange(false);
       // Auto-refresh the page after successful submission
       window.location.reload();
-    } catch (err: any) {
-      // Handle different error response formats
-      const errorData = err.response?.data;
-      const errorMessage = 
-        errorData?.error || 
-        (Array.isArray(errorData?.non_field_errors) ? errorData.non_field_errors[0] : errorData?.non_field_errors) ||
-        errorData?.detail ||
-        err.message || 
-        "Failed to submit change request";
-      setError(errorMessage);
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, "Failed to submit change request"));
     } finally {
       setLoading(false);
     }
@@ -209,4 +202,3 @@ export const SubmitChangeRequestModal: React.FC<SubmitChangeRequestModalProps> =
     </Dialog>
   );
 };
-

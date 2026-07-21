@@ -18,6 +18,7 @@ import {
 import { Input } from "../../../../components/common/input";
 import type { Compensation } from "../../../../types/compensation";
 import type { Personnel } from "../../../../types/personnel";
+import { getApiErrorData, getApiErrorField, getApiErrorMessage } from "../../../../utils/apiError";
 
 interface EditCompensationModalProps {
   isOpen: boolean;
@@ -120,28 +121,21 @@ export const EditCompensationModal: React.FC<EditCompensationModalProps> = ({
       });
       setError(null);
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to save compensation item:", error);
-      console.error("Error details:", error?.response?.data);
+      const errorData = getApiErrorData(error);
+      console.error("Error details:", errorData);
       
       // Extract error message from response
-      let errorMessage = "Failed to save compensation. Please try again.";
-      if (error?.response?.data) {
-        const errorData = error.response.data;
-        if (errorData.non_field_errors && Array.isArray(errorData.non_field_errors)) {
+      let errorMessage = getApiErrorMessage(error, "Failed to save compensation. Please try again.");
+      const nonFieldError = getApiErrorField(errorData, "non_field_errors");
+      if (nonFieldError) {
           // Handle unique constraint error
-          if (errorData.non_field_errors[0]?.includes("unique")) {
+          if (nonFieldError.includes("unique")) {
             errorMessage = `A ${formData.type === 'SALARY' ? 'Salary' : 'Honoraria'} compensation already exists for this personnel. Please edit the existing compensation instead.`;
           } else {
-            errorMessage = errorData.non_field_errors[0];
+            errorMessage = nonFieldError;
           }
-        } else if (errorData.detail) {
-          errorMessage = errorData.detail;
-        } else if (typeof errorData === 'string') {
-          errorMessage = errorData;
-        }
-      } else if (error?.message) {
-        errorMessage = error.message;
       }
       
       setError(errorMessage);

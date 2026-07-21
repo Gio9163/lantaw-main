@@ -127,82 +127,53 @@ export const ChangeRequestsLayout: React.FC<ChangeRequestsLayoutProps> = ({
 
   const handleApprove = async () => {
     if (!selectedRequest) return;
-    try {
-      await changeRequests.approveChangeRequest(selectedRequest.project, selectedRequest.id);
-      setIsApproveModalOpen(false);
-      // Refresh the list
-      await changeRequests.fetchChangeRequests(projectId || undefined, filters.filters);
-      // Refresh the selected request detail view
-      const updatedRequest = await changeRequests.fetchChangeRequestById(selectedRequest.project, selectedRequest.id);
-      if (updatedRequest) {
-        setSelectedRequest(updatedRequest);
-      }
-    } catch (error) {
-      // Error is handled by the hook, just re-throw to let modal handle it
-      throw error;
+    await changeRequests.approveChangeRequest(selectedRequest.project, selectedRequest.id);
+    setIsApproveModalOpen(false);
+    await changeRequests.fetchChangeRequests(projectId || undefined, filters.filters);
+    const updatedRequest = await changeRequests.fetchChangeRequestById(selectedRequest.project, selectedRequest.id);
+    if (updatedRequest) {
+      setSelectedRequest(updatedRequest);
     }
   };
 
   const handleReject = async (reason: string) => {
     if (!selectedRequest) return;
-    try {
-      await changeRequests.rejectChangeRequest(selectedRequest.project, selectedRequest.id, reason);
-      setIsRejectModalOpen(false);
-      // Refresh the list
-      await changeRequests.fetchChangeRequests(projectId || undefined, filters.filters);
-      // Refresh the selected request detail view
-      const updatedRequest = await changeRequests.fetchChangeRequestById(selectedRequest.project, selectedRequest.id);
-      if (updatedRequest) {
-        setSelectedRequest(updatedRequest);
-      }
-    } catch (error) {
-      // Error is handled by the hook, just re-throw to let modal handle it
-      throw error;
+    await changeRequests.rejectChangeRequest(selectedRequest.project, selectedRequest.id, reason);
+    setIsRejectModalOpen(false);
+    await changeRequests.fetchChangeRequests(projectId || undefined, filters.filters);
+    const updatedRequest = await changeRequests.fetchChangeRequestById(selectedRequest.project, selectedRequest.id);
+    if (updatedRequest) {
+      setSelectedRequest(updatedRequest);
     }
   };
 
   const handleArchive = async () => {
     if (!selectedRequest) return;
-    try {
-      await changeRequests.archiveChangeRequest(selectedRequest.project, selectedRequest.id);
-      setSelectedRequest(null);
-      await changeRequests.fetchChangeRequests(projectId || undefined, filters.filters);
-    } catch (error) {
-      throw error;
-    }
+    await changeRequests.archiveChangeRequest(selectedRequest.project, selectedRequest.id);
+    setSelectedRequest(null);
+    await changeRequests.fetchChangeRequests(projectId || undefined, filters.filters);
   };
 
   const handleResubmit = async () => {
     if (!selectedRequest) return;
     const description = window.prompt("Please enter your updated description for resubmission:", selectedRequest.description || "")?.trim();
     if (!description) return;
-    try {
-      await changeRequests.resubmitChangeRequest(selectedRequest.project, selectedRequest.id, description);
-      const updatedRequest = await changeRequests.fetchChangeRequestById(selectedRequest.project, selectedRequest.id);
-      if (updatedRequest) {
-        setSelectedRequest(updatedRequest);
-      }
-      await changeRequests.fetchChangeRequests(projectId || undefined, filters.filters);
-    } catch (error) {
-      throw error;
+    await changeRequests.resubmitChangeRequest(selectedRequest.project, selectedRequest.id, description);
+    const updatedRequest = await changeRequests.fetchChangeRequestById(selectedRequest.project, selectedRequest.id);
+    if (updatedRequest) {
+      setSelectedRequest(updatedRequest);
     }
+    await changeRequests.fetchChangeRequests(projectId || undefined, filters.filters);
   };
 
   const handleCancel = async (reason: string) => {
     if (!selectedRequest) return;
-    try {
-      await changeRequests.cancelChangeRequest(selectedRequest.project, selectedRequest.id, reason);
-      setIsCancelModalOpen(false);
-      // Refresh the list
-      await changeRequests.fetchChangeRequests(projectId || undefined, filters.filters);
-      // Refresh the selected request detail view
-      const updatedRequest = await changeRequests.fetchChangeRequestById(selectedRequest.project, selectedRequest.id);
-      if (updatedRequest) {
-        setSelectedRequest(updatedRequest);
-      }
-    } catch (error) {
-      // Error is handled by the hook, just re-throw to let modal handle it
-      throw error;
+    await changeRequests.cancelChangeRequest(selectedRequest.project, selectedRequest.id, reason);
+    setIsCancelModalOpen(false);
+    await changeRequests.fetchChangeRequests(projectId || undefined, filters.filters);
+    const updatedRequest = await changeRequests.fetchChangeRequestById(selectedRequest.project, selectedRequest.id);
+    if (updatedRequest) {
+      setSelectedRequest(updatedRequest);
     }
   };
 
@@ -356,4 +327,3 @@ export const ChangeRequestsLayout: React.FC<ChangeRequestsLayoutProps> = ({
     </div>
   );
 };
-

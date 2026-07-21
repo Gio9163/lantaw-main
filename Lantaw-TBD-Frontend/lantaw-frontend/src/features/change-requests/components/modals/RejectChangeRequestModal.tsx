@@ -13,6 +13,7 @@ import { Label } from "../../../../components/common/label";
 import { AlertTriangle } from "lucide-react";
 import type { ChangeRequest } from "../../../../types/changeRequest";
 import { getChangeTypeDisplayName } from "../../utils/statusHelpers";
+import { getApiErrorMessage } from "../../../../utils/apiError";
 
 interface RejectChangeRequestModalProps {
   open: boolean;
@@ -41,8 +42,8 @@ export const RejectChangeRequestModal: React.FC<RejectChangeRequestModalProps> =
       await onReject(rejectionReason);
       setRejectionReason("");
       onOpenChange(false);
-    } catch (err: any) {
-      setError(err.response?.data?.error || err.message || "Failed to reject change request");
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, "Failed to reject change request"));
     } finally {
       setLoading(false);
     }
@@ -167,4 +168,3 @@ export const RejectChangeRequestModal: React.FC<RejectChangeRequestModalProps> =
     </Dialog>
   );
 };
-

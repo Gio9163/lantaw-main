@@ -6,8 +6,20 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
 
   return {
-     plugins: [react()],
-      base: "/",
+    plugins: [react()],
+    base: "/",
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            react: ["react", "react-dom", "react-router-dom"],
+            charts: ["recharts"],
+            ui: ["radix-ui", "lucide-react", "class-variance-authority", "tailwind-merge"],
+            data: ["axios", "@tanstack/react-query", "zustand", "zod", "jwt-decode"],
+          },
+        },
+      },
+    },
     server: {
       proxy: {
         // Forward /api to Django when VITE_API_URL is unset in local development.

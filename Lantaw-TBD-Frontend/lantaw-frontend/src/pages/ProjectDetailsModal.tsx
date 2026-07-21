@@ -116,7 +116,7 @@ export default function ProjectDetailsModal({
                   <ResponsiveContainer width="100%" height={400}>
                     <PieChart>
                       <Pie
-                        data={budgetData as any}
+                        data={budgetData}
                         cx="50%"
                         cy="50%"
                         innerRadius={80}
@@ -168,4 +168,3 @@ export default function ProjectDetailsModal({
     </Dialog>
   );
 }
-

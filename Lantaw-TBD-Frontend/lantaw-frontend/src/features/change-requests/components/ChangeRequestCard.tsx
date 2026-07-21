@@ -55,8 +55,8 @@ export const ChangeRequestCard: React.FC<ChangeRequestCardProps> = ({
 
   // Helper function to generate title for PROJECT change requests based on changed fields
   const generateProjectChangeTitle = (
-    currentState: Record<string, any> | null,
-    proposedChanges: Record<string, any>
+    currentState: Record<string, unknown> | null,
+    proposedChanges: Record<string, unknown>
   ): string | null => {
     if (!currentState || !proposedChanges || changeRequest.change_type !== 'PROJECT') {
       return null;
@@ -96,7 +96,7 @@ export const ChangeRequestCard: React.FC<ChangeRequestCardProps> = ({
       }
       
       // Normalize values for comparison (handle strings, numbers, dates)
-      const normalizeValue = (val: any) => {
+      const normalizeValue = (val: unknown) => {
         if (val === null || val === undefined) return "";
         // Handle numbers - convert to number for proper comparison
         if (typeof val === "number") return val;
@@ -360,4 +360,3 @@ export const ChangeRequestCard: React.FC<ChangeRequestCardProps> = ({
     </Card>
   );
 };
-

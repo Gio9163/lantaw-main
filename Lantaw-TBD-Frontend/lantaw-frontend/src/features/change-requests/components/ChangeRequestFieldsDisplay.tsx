@@ -39,8 +39,8 @@ export const ChangeRequestFieldsDisplay: React.FC<ChangeRequestFieldsDisplayProp
   }, [change_type, project]);
 
   // Helper to resolve personnel ID to full name
-  const getPersonnelName = (personnelId: number | string | null | undefined): string => {
-    if (!personnelId) return "Not set";
+  const getPersonnelName = (personnelId: unknown): string => {
+    if (typeof personnelId !== "number" && typeof personnelId !== "string") return "Not set";
     const id = typeof personnelId === 'string' ? parseInt(personnelId) : personnelId;
     const person = personnelList.find(p => p.id === id);
     if (person) {
@@ -50,19 +50,19 @@ export const ChangeRequestFieldsDisplay: React.FC<ChangeRequestFieldsDisplayProp
   };
 
   // Render field value based on type
-  const renderFieldValue = (key: string, value: any): React.ReactNode => {
+  const renderFieldValue = (key: string, value: unknown): React.ReactNode => {
     if (value === null || value === undefined) {
       return <span className="text-muted-foreground italic">Not set</span>;
     }
 
     // Handle dates
     if (key.includes("date") || key.includes("Date")) {
-      return new Date(value).toLocaleDateString();
+      return new Date(String(value)).toLocaleDateString();
     }
 
     // Handle amounts/expenses
     if (key.includes("expense") || key.includes("amount") || key.includes("grant")) {
-      return formatCurrency(value, hideFinancialValues);
+      return formatCurrency(typeof value === "number" || typeof value === "string" ? value : String(value), hideFinancialValues);
     }
 
     // Handle status fields
@@ -89,7 +89,7 @@ export const ChangeRequestFieldsDisplay: React.FC<ChangeRequestFieldsDisplayProp
   };
 
   // Helper function to detect changed fields
-  const getChangedFields = (currentState: Record<string, any> | null, proposedChanges: Record<string, any>): Set<string> => {
+  const getChangedFields = (currentState: Record<string, unknown> | null, proposedChanges: Record<string, unknown>): Set<string> => {
     const changedFields = new Set<string>();
     
     if (!currentState || !proposedChanges) {
@@ -124,7 +124,7 @@ export const ChangeRequestFieldsDisplay: React.FC<ChangeRequestFieldsDisplayProp
       }
       
       // Normalize values for comparison
-      const normalizeValue = (val: any) => {
+      const normalizeValue = (val: unknown) => {
         if (val === null || val === undefined) return "";
         if (typeof val === "number") return val;
         const numVal = Number(val);
@@ -147,7 +147,7 @@ export const ChangeRequestFieldsDisplay: React.FC<ChangeRequestFieldsDisplayProp
 
   // Render fields in a structured way
   const renderFields = (
-    fields: Record<string, any>, 
+    fields: Record<string, unknown>,
     title: string, 
     variant: "current" | "proposed" = "proposed",
     changedFields?: Set<string>
@@ -345,7 +345,7 @@ export const ChangeRequestFieldsDisplay: React.FC<ChangeRequestFieldsDisplayProp
                       )}
                     </Label>
                     <div className={`text-sm font-medium mt-1 ${isChanged ? "text-yellow-900" : ""}`}>
-                      {value || "Not set"}
+                      {value === null || value === undefined || value === "" ? "Not set" : String(value)}
                     </div>
                   </div>
                 );
@@ -439,4 +439,3 @@ export const ChangeRequestFieldsDisplay: React.FC<ChangeRequestFieldsDisplayProp
 
   return null;
 };
-

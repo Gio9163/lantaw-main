@@ -1,5 +1,6 @@
 // Fixed types needed by pie chart
 export interface BudgetItem {
+    [key: string]: string | number;
     name: string;
     value: number;
     percentage: number;
@@ -35,4 +36,3 @@ export const getBaseColorForCategory = (view: 'PS' | 'MOOE' | 'CO'): string => {
         default: return '#cccccc'
     }
 };
-

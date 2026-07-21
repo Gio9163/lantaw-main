@@ -673,5 +673,8 @@ export {
   SidebarRail,
   SidebarSeparator,
   SidebarTrigger,
-  useSidebar,
 };
+
+// The compound sidebar API intentionally exports its colocated hook with its components.
+// eslint-disable-next-line react-refresh/only-export-components
+export { useSidebar };

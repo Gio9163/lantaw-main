@@ -21,6 +21,7 @@ import { CreatableSelect } from "./CreatableSelect";
 import type { Personnel } from "../../../../types/personnel";
 import type { Role } from "../../../../types/role";
 import type { Department } from "../../../../types/department";
+import { getApiErrorMessage } from "../../../../utils/apiError";
 
 interface AddPersonnelModalProps {
   isOpen: boolean;
@@ -114,15 +115,9 @@ export const AddPersonnelModal: React.FC<AddPersonnelModalProps> = ({
       });
       // Only close on success
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to save personnel:", error);
-      // Display error to user
-      const errorMessage = error.response?.data?.error || 
-                          error.response?.data?.role?.[0] ||
-                          error.response?.data?.department?.[0] ||
-                          error.message || 
-                          "Failed to save personnel. Please try again.";
-      setError(errorMessage);
+      setError(getApiErrorMessage(error, "Failed to save personnel. Please try again.", ["role", "department"]));
     } finally {
       setIsSubmitting(false);
     }

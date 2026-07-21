@@ -87,7 +87,6 @@ const ProjectModal: React.FC<ProjectModalProps> = ({
   setFormData,
   onSubmit,
   checkStaffExists,
-  userRole: _userRole,
   error,
   initialBudgetItems,
   onBudgetItemsChange,
@@ -575,7 +574,7 @@ const ProjectModal: React.FC<ProjectModalProps> = ({
     let hasError = false;
 
     for (const f of fields) {
-      const value = (formData as any)[f] ?? "";
+      const value = formData[f as keyof typeof formData] ?? "";
       const err = validateField(f, value);
       if (err) hasError = true;
     }

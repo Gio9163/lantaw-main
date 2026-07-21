@@ -54,40 +54,10 @@ import type { DetailItem } from "../utils/pieChartHelper";
 import type { Project } from "../../../types/project";
 import type { ChangeRequestCreateData } from "../../../types/changeRequest";
 
-const DashboardLayout = () => {
+const ProjectDashboard = ({ currentProject }: { currentProject: Project }) => {
   // Context
-  const { currentProject, refetchProject } = useProject();
-  const { user, loading: authLoading } = useAuth();
-
-  // Show loading state while user data is being fetched
-  if (authLoading) {
-    return (
-      <div className="p-4 sm:p-6 space-y-4">
-        <div className="bg-card border border-border rounded-lg p-6">
-          <p className="text-muted-foreground">Loading dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Early return if no project is selected
-  if (!currentProject) {
-    return (
-      <div className="p-4 sm:p-6 space-y-4">
-        <h2 className="text-2xl font-semibold">Welcome to Lantaw Dashboard</h2>
-        <div className="bg-card border border-border rounded-lg p-6">
-          <p className="text-muted-foreground mb-4">
-            No project selected. Please select a project from the sidebar or create a new one.
-          </p>
-          {user?.role === "Admin" && (
-            <p className="text-sm text-muted-foreground">
-              As an admin, you can create a new project using the "Create Project" button in the sidebar.
-            </p>
-          )}
-        </div>
-      </div>
-    );
-  }
+  const { refetchProject } = useProject();
+  const { user } = useAuth();
 
   // Hooks
   const activities = useActivities(currentProject?.id || null);
@@ -122,13 +92,12 @@ const DashboardLayout = () => {
   const [isObjectivesModalOpen, setIsObjectivesModalOpen] = useState(false);
 
   // Editing states
-  const [_editingProject, _setIsEditingProject] = useState<Project | null>(null);
   const [pendingChangeRequest, setPendingChangeRequest] = useState<{
     changeType: 'PROJECT';
     operation: 'UPDATE';
     entityId: number;
-    currentState: Record<string, any>;
-    proposedChanges: Record<string, any>;
+    currentState: Record<string, unknown>;
+    proposedChanges: Record<string, unknown>;
     customTitle?: string;
   } | null>(null);
 
@@ -240,9 +209,9 @@ const DashboardLayout = () => {
       
       // Load budget items from API response
       // Transform API format (array) to BudgetCategory format
-      const budgetItems: any = { ps: [], mooe: [], co: [] };
-      if ((currentProject as any).budget_items && Array.isArray((currentProject as any).budget_items)) {
-        (currentProject as any).budget_items.forEach((item: any) => {
+      const budgetItems: typeof editProjectBudgetItems = { ps: [], mooe: [], co: [] };
+      if (currentProject.budget_items) {
+        currentProject.budget_items.forEach((item) => {
           const categoryKey = item.category.toLowerCase() as 'ps' | 'mooe' | 'co';
           if (categoryKey in budgetItems) {
             budgetItems[categoryKey].push({
@@ -260,8 +229,8 @@ const DashboardLayout = () => {
 
   // Helper function to generate title based on changed fields
   const generateChangeRequestTitle = (
-    currentState: Record<string, any>,
-    proposedChanges: Record<string, any>
+    currentState: Record<string, unknown>,
+    proposedChanges: Record<string, unknown>
   ): string => {
     const fieldLabels: Record<string, string> = {
       name: "Project Name",
@@ -297,7 +266,7 @@ const DashboardLayout = () => {
       }
       
       // Normalize values for comparison (handle strings, numbers, dates)
-      const normalizeValue = (val: any) => {
+      const normalizeValue = (val: unknown) => {
         if (val === null || val === undefined) return "";
         // Handle numbers - convert to number for proper comparison
         if (typeof val === "number") return val;
@@ -338,8 +307,8 @@ const DashboardLayout = () => {
 
   // Helper function to get changed fields from currentState and proposedChanges
   const getChangedFields = (
-    currentState: Record<string, any>,
-    proposedChanges: Record<string, any>
+    currentState: Record<string, unknown>,
+    proposedChanges: Record<string, unknown>
   ): Set<string> => {
     const changedFields = new Set<string>();
 
@@ -362,7 +331,7 @@ const DashboardLayout = () => {
       }
 
       // Normalize values for comparison
-      const normalizeValue = (val: any) => {
+      const normalizeValue = (val: unknown) => {
         if (val === null || val === undefined) return "";
         if (typeof val === "number") return val;
         const numVal = Number(val);
@@ -779,6 +748,41 @@ const DashboardLayout = () => {
       )}
     </div>
   );
+};
+
+const DashboardLayout = () => {
+  const { currentProject } = useProject();
+  const { user, loading: authLoading } = useAuth();
+
+  if (authLoading) {
+    return (
+      <div className="p-4 sm:p-6 space-y-4">
+        <div className="bg-card border border-border rounded-lg p-6">
+          <p className="text-muted-foreground">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentProject) {
+    return (
+      <div className="p-4 sm:p-6 space-y-4">
+        <h2 className="text-2xl font-semibold">Welcome to Lantaw Dashboard</h2>
+        <div className="bg-card border border-border rounded-lg p-6">
+          <p className="text-muted-foreground mb-4">
+            No project selected. Please select a project from the sidebar or create a new one.
+          </p>
+          {user?.role === "Admin" && (
+            <p className="text-sm text-muted-foreground">
+              As an admin, you can create a new project using the "Create Project" button in the sidebar.
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return <ProjectDashboard currentProject={currentProject} />;
 };
 
 export default DashboardLayout;

@@ -8,6 +8,12 @@ import {
 import { jwtDecode } from "jwt-decode";
 import type { User } from "../types/user";
 import api from "../api/client";
+import { getApiErrorData, getApiErrorMessage } from "../utils/apiError";
+
+interface AccessTokenPayload {
+  user_id?: number;
+  exp?: number;
+}
 
 // Context object type
 interface AuthContextType {
@@ -48,7 +54,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   // Decode JWT token
   const decodeToken = useCallback((token: string) => {
     try {
-      const decoded: any = jwtDecode(token);
+      const decoded = jwtDecode<AccessTokenPayload>(token);
       return decoded;
     } catch (err) {
       console.error("❌ Invalid token: ", err);
@@ -85,8 +91,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const fetchUserProfile = useCallback(async (token: string) => {
     try {
       // TODO: Why not use our local function here?
-      const decoded: any = decodeToken(token);
-      const userId = decoded.user_id;
+      const decoded = decodeToken(token);
+      const userId = decoded?.user_id;
       if (!userId) throw new Error("❌ JWT does not contain user id");
 
       const res = await api.get(`/api/users/${userId}/`, {
@@ -95,16 +101,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         },
       });
       setUser(res.data);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(
         "❌ Error fetching user profile: ",
-        err.response?.data || err.message
+        getApiErrorData(err) || getApiErrorMessage(err, "Failed to fetch user profile")
       );
       setUser(null);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [decodeToken]);
 
   // Refresh access token
   const refreshAccessToken = useCallback(async () => {
@@ -121,10 +127,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       localStorage.setItem("access", newAccess);
 
       await fetchUserProfile(newAccess);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(
         "❌ Token refresh failed: ",
-        err.response?.data || err.message
+        getApiErrorData(err) || getApiErrorMessage(err, "Token refresh failed")
       );
       logout();
     } finally {
@@ -136,7 +142,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     const initAuth = async () => {
       if (accessToken) {
-        const decoded: any = decodeToken(accessToken);
+        const decoded = decodeToken(accessToken);
         const now = Date.now() / 1000;
 
         if (decoded?.exp && decoded.exp < now) {
@@ -212,4 +218,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 };
 
+// The hook shares this module with its provider so both use the same private context.
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => useContext(AuthContext);

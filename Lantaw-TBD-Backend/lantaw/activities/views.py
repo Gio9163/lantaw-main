@@ -9,7 +9,7 @@ from change_requests.approval_mixin import ApprovalRequiredWriteMixin
 class IsAdminExecutiveOrProjectStaff(permissions.BasePermission):
     def has_permission(self, request, view):
         if request.method in permissions.SAFE_METHODS:
-            return True
+            return request.user.is_authenticated
 
         if not request.user.is_authenticated:
             return False
@@ -27,7 +27,7 @@ class IsAdminExecutiveOrProjectStaff(permissions.BasePermission):
 
     def has_object_permission(self, request, view, obj):
         if request.method in permissions.SAFE_METHODS:
-            return True
+            return request.user.is_authenticated
 
         if not request.user.is_authenticated:
             return False
@@ -65,17 +65,10 @@ class ObjectiveViewSet(ApprovalRequiredWriteMixin, viewsets.ModelViewSet):
         # Get the objectives related to the project 
         qs = Objective.objects.filter(project_id=project_pk) 
 
-        # Public access: return all objectives for the project
-        if not user.is_authenticated:
-            return qs
-
         if user.role == "ADMIN":
             return qs
-        elif user.role == "EXECUTIVE":
-            return qs
-        elif user.role == "PROJECT_STAFF":
-            # Verifies if the user is a member of the project and return objectives if true
-            return qs.filter(project__projectmembers__user=user)
+        elif user.role in {"EXECUTIVE", "PROJECT_STAFF"}:
+            return qs.filter(project__projectmembers__user=user).distinct()
         return Objective.objects.none()
     
     def perform_create(self, serializer):
@@ -158,21 +151,17 @@ class ActivityViewSet(ApprovalRequiredWriteMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         objective_pk = self.kwargs.get("objective_pk")
+        project_pk = self.kwargs.get("project_pk")
 
         # Get the activities related to the objective
         qs = Activity.objects.filter(objective_id=objective_pk)
-
-        # Public access: return all activities for the objective
-        if not user.is_authenticated:
-            return qs
+        if project_pk is not None:
+            qs = qs.filter(objective__project_id=project_pk)
 
         if user.role == "ADMIN":
             return qs
-        elif user.role == "EXECUTIVE":
-            return qs
-        elif user.role == "PROJECT_STAFF":
-            # Verifies if the user is a member of the project and return activities if true
-            return qs.filter(objective__project__projectmembers__user=user)
+        elif user.role in {"EXECUTIVE", "PROJECT_STAFF"}:
+            return qs.filter(objective__project__projectmembers__user=user).distinct()
         return Activity.objects.none()
 
     def perform_create(self, serializer):

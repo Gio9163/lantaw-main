@@ -11,6 +11,7 @@ import { Button } from "../../../../components/common/button";
 import { AlertTriangle } from "lucide-react";
 import type { ChangeRequest } from "../../../../types/changeRequest";
 import { getChangeTypeDisplayName } from "../../utils/statusHelpers";
+import { getApiErrorMessage } from "../../../../utils/apiError";
 
 interface ApproveChangeRequestModalProps {
   open: boolean;
@@ -37,8 +38,8 @@ export const ApproveChangeRequestModal: React.FC<ApproveChangeRequestModalProps>
     try {
       await onApprove();
       onOpenChange(false);
-    } catch (err: any) {
-      setError(err.response?.data?.error || err.message || "Failed to approve change request");
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, "Failed to approve change request"));
     } finally {
       setLoading(false);
     }
@@ -144,4 +145,3 @@ export const ApproveChangeRequestModal: React.FC<ApproveChangeRequestModalProps>
     </Dialog>
   );
 };
-
