@@ -5,7 +5,7 @@ from budget.models import BudgetLineItem
 
 @receiver(post_save, sender=Project)
 def create_default_budget_items(sender, instance, created, **kwargs):
-    if not created:
+    if kwargs.get('raw') or not created:
         return
 
     for code, _ in BudgetLineItem.BUDGET_ITEM_CHOICES:

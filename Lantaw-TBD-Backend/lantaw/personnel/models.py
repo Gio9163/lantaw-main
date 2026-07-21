@@ -37,7 +37,7 @@ class Role(models.Model):
     - project: Optional ForeignKey to Project for project-specific roles
     """
 
-    name = models.CharField(max_length=30, blank=True)
+    name = models.CharField(max_length=100, blank=True)
     project = models.ForeignKey("projects.Project", on_delete=models.CASCADE, related_name="roles", null=False, blank=True)
     
     class Meta:
