@@ -147,10 +147,11 @@ export const ChangeRequestsLayout: React.FC<ChangeRequestsLayoutProps> = ({
     }
   };
 
-  const handleArchive = async () => {
-    if (!selectedRequest) return;
-    await changeRequests.archiveChangeRequest(selectedRequest.project, selectedRequest.id);
-    setSelectedRequest(null);
+  const handleArchive = async (request: ChangeRequest) => {
+    await changeRequests.archiveChangeRequest(request.project, request.id);
+    if (selectedRequest?.id === request.id) {
+      setSelectedRequest(null);
+    }
     await changeRequests.fetchChangeRequests(projectId || undefined, filters.filters);
   };
 
@@ -203,7 +204,7 @@ export const ChangeRequestsLayout: React.FC<ChangeRequestsLayoutProps> = ({
           onBack={handleBackToList}
           onApprove={isAdmin ? () => handleApproveClick(selectedRequest) : undefined}
           onReject={isAdmin ? () => handleRejectClick(selectedRequest) : undefined}
-          onArchive={isAdmin ? handleArchive : undefined}
+          onArchive={isAdmin ? () => handleArchive(selectedRequest) : undefined}
           onResubmit={isProjectStaff ? handleResubmit : undefined}
           onCancel={isProjectStaff ? () => handleCancelClick(selectedRequest) : undefined}
           showActions={isAdmin}
@@ -281,6 +282,7 @@ export const ChangeRequestsLayout: React.FC<ChangeRequestsLayoutProps> = ({
                 onViewDetails={handleViewDetails}
                 onApprove={isAdmin ? handleApproveClick : undefined}
                 onReject={isAdmin ? handleRejectClick : undefined}
+                onArchive={isAdmin ? handleArchive : undefined}
                 onCancel={isProjectStaff ? handleCancelClick : undefined}
                 showActions={isAdmin}
               />

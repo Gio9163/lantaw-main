@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Button } from "../../../components/common/button";
 import { Badge } from "../../../components/common/badge";
 import { Card, CardHeader } from "../../../components/common/card";
-import { Eye, Check, X, Calendar, User, XCircle } from "lucide-react";
+import { Eye, Check, X, Calendar, User, XCircle, Archive } from "lucide-react";
 import type { ChangeRequest } from "../../../types/changeRequest";
 import { getStatusStyle, getOperationStyle, getChangeTypeDisplayName } from "../utils/statusHelpers";
 import { useAuth } from "../../../context/AuthContext";
@@ -27,6 +27,7 @@ interface ChangeRequestCardProps {
   onViewDetails: (request: ChangeRequest) => void;
   onApprove?: (request: ChangeRequest) => void;
   onReject?: (request: ChangeRequest) => void;
+  onArchive?: (request: ChangeRequest) => void;
   onCancel?: (request: ChangeRequest) => void;
   showActions?: boolean;
 }
@@ -36,6 +37,7 @@ export const ChangeRequestCard: React.FC<ChangeRequestCardProps> = ({
   onViewDetails,
   onApprove,
   onReject,
+  onArchive,
   onCancel,
   showActions = false,
 }) => {
@@ -45,7 +47,8 @@ export const ChangeRequestCard: React.FC<ChangeRequestCardProps> = ({
   const statusStyle = getStatusStyle(currentStatus);
   const operationStyle = getOperationStyle(changeRequest.operation);
   const changeTypeName = getChangeTypeDisplayName(changeRequest.change_type);
-  const isProcessed = currentStatus !== 'PENDING' && currentStatus !== 'REJECTED' && currentStatus !== 'RESUBMITTED';
+  const canReview = currentStatus === 'PENDING' || currentStatus === 'RESUBMITTED';
+  const canArchive = !canReview && currentStatus !== 'ARCHIVED';
   const isProjectStaff = user?.role === "Project Staff";
   const isOwnRequest = user?.id !== undefined && String(changeRequest.submitted_by) === user.id;
   const canCancel = isProjectStaff && isOwnRequest && currentStatus === 'PENDING';
@@ -320,9 +323,9 @@ export const ChangeRequestCard: React.FC<ChangeRequestCardProps> = ({
             )}
             
             {/* Approve/Reject buttons - only for admins */}
-            {showActions && (
+            {showActions && canReview && (
               <>
-                {!isProcessed && onApprove && (
+                {onApprove && (
                   <Button
                     variant="default"
                     size="sm"
@@ -331,13 +334,12 @@ export const ChangeRequestCard: React.FC<ChangeRequestCardProps> = ({
                       onApprove(changeRequest);
                     }}
                     className="h-8 bg-green-500 hover:bg-green-600"
-                    disabled={isProcessed}
                   >
                     <Check className="h-3 w-3 mr-1" />
                     Approve
                   </Button>
                 )}
-                {!isProcessed && onReject && (
+                {onReject && (
                   <Button
                     variant="destructive"
                     size="sm"
@@ -346,13 +348,27 @@ export const ChangeRequestCard: React.FC<ChangeRequestCardProps> = ({
                       onReject(changeRequest);
                     }}
                     className="h-8"
-                    disabled={isProcessed}
                   >
                     <X className="h-3 w-3 mr-1" />
                     Reject
                   </Button>
                 )}
               </>
+            )}
+
+            {showActions && canArchive && onArchive && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onArchive(changeRequest);
+                }}
+                className="h-8"
+              >
+                <Archive className="h-3 w-3 mr-1" />
+                Archive
+              </Button>
             )}
           </div>
         </div>

@@ -35,7 +35,8 @@ export const ChangeRequestDetail: React.FC<ChangeRequestDetailProps> = ({
   const statusStyle = getStatusStyle(currentStatus);
   const operationStyle = getOperationStyle(changeRequest.operation);
   const changeTypeName = getChangeTypeDisplayName(changeRequest.change_type);
-  const isProcessed = currentStatus !== 'PENDING' && currentStatus !== 'REJECTED' && currentStatus !== 'RESUBMITTED';
+  const canReview = currentStatus === 'PENDING' || currentStatus === 'RESUBMITTED';
+  const canArchive = !canReview && currentStatus !== 'ARCHIVED';
   const isProjectStaff = user?.role === "Project Staff";
   const isOwnRequest = user?.id !== undefined && String(changeRequest.submitted_by) === user.id;
   const canCancel = isProjectStaff && isOwnRequest && currentStatus === 'PENDING';
@@ -49,7 +50,7 @@ export const ChangeRequestDetail: React.FC<ChangeRequestDetailProps> = ({
           Back to List
         </Button>
         <div className="flex gap-2">
-          {showActions && !isProcessed && (
+          {showActions && canReview && (
             <>
               {onApprove && (
                 <Button
@@ -66,13 +67,13 @@ export const ChangeRequestDetail: React.FC<ChangeRequestDetailProps> = ({
                   Reject
                 </Button>
               )}
-              {onArchive && (
-                <Button variant="outline" onClick={onArchive}>
-                  <Archive className="h-4 w-4 mr-2" />
-                  Archive
-                </Button>
-              )}
             </>
+          )}
+          {showActions && canArchive && onArchive && (
+            <Button variant="outline" onClick={onArchive}>
+              <Archive className="h-4 w-4 mr-2" />
+              Archive
+            </Button>
           )}
           {isProjectStaff && currentStatus === 'REJECTED' && onResubmit && (
             <Button variant="outline" onClick={onResubmit}>
@@ -225,4 +226,3 @@ export const ChangeRequestDetail: React.FC<ChangeRequestDetailProps> = ({
     </div>
   );
 };
-
