@@ -1,4 +1,8 @@
 from datetime import date
+from io import StringIO
+
+from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.utils import timezone
 
 from django.test import TestCase
@@ -105,3 +109,48 @@ class HistoryLogArchiveFlowTests(TestCase):
         )
         self.assertEqual(deleted.status_code, 204)
         self.assertFalse(ArchivedHistoryLog.objects.filter(pk=archived_id).exists())
+
+    def test_scheduled_purge_uses_archived_at_and_preserves_active_logs(self):
+        active_log = HistoryLog.objects.create(
+            timestamp=timezone.now() - timezone.timedelta(days=60),
+            user=self.admin,
+            action="UPDATE",
+            change_type="PROJECT",
+            module="PROJECT",
+            description="Old active history entry",
+            project=self.project,
+        )
+        old_archive = ArchivedHistoryLog.objects.create(
+            user=self.admin,
+            action="UPDATE",
+            change_type="PROJECT",
+            module="PROJECT",
+            description="Archive older than retention",
+            project=self.project,
+        )
+        recent_archive = ArchivedHistoryLog.objects.create(
+            user=self.admin,
+            action="UPDATE",
+            change_type="PROJECT",
+            module="PROJECT",
+            description="Archive within retention",
+            project=self.project,
+        )
+        ArchivedHistoryLog.objects.filter(pk=old_archive.pk).update(
+            archived_at=timezone.now() - timezone.timedelta(days=31)
+        )
+        ArchivedHistoryLog.objects.filter(pk=recent_archive.pk).update(
+            archived_at=timezone.now() - timezone.timedelta(days=29)
+        )
+
+        output = StringIO()
+        call_command("archive_history_logs", stdout=output)
+
+        self.assertFalse(ArchivedHistoryLog.objects.filter(pk=old_archive.pk).exists())
+        self.assertTrue(ArchivedHistoryLog.objects.filter(pk=recent_archive.pk).exists())
+        self.assertTrue(HistoryLog.objects.filter(pk=active_log.pk).exists())
+        self.assertIn("Purged 1 archived history log entries.", output.getvalue())
+
+    def test_scheduled_purge_rejects_unsafe_retention(self):
+        with self.assertRaises(CommandError):
+            call_command("archive_history_logs", purge_days=0)

@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: lantaw-main-bhn6
+    runtime: python
+    branch: main
+    rootDir: Lantaw-TBD-Backend/lantaw
+    buildCommand: bash build.sh
+    startCommand: gunicorn lantaw.wsgi:application --bind 0.0.0.0:$PORT
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "0"
+      - key: DATABASE_URL
+        sync: false
+      - key: ALLOWED_HOSTS
+        value: lantaw-main-bhn6.onrender.com
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://lantaw-main.vercel.app
+      - key: CSRF_TRUSTED_ORIGINS
+        value: https://lantaw-main.vercel.app
+
+  - type: cron
+    name: lantaw-history-log-purge
+    runtime: python
+    plan: starter
+    branch: main
+    rootDir: Lantaw-TBD-Backend/lantaw
+    schedule: "0 2 * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: python manage.py archive_history_logs --purge-days 30
+    envVars:
+      - key: SECRET_KEY
+        sync: false
+      - key: DEBUG
+        value: "0"
+      - key: DATABASE_URL
+        sync: false
