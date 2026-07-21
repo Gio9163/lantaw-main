@@ -131,15 +131,17 @@ export const useActivities = (projectId: number | null): UseActivitiesReturn => 
     setError(null);
     try {
       const data = await objectivesApi.getAll(projectId);
+      const nextActivitiesMap = Object.fromEntries(
+        data.map((objective) => [objective.id, objective.activities || []])
+      );
 
-      // NOTE: backend computes objective_status, but we still keep activities
-      // and ensure UI status is derived from refreshed activitiesMap.
       setObjectives(
         data.map((objective) => ({
           ...objective,
           activities: objective.activities || [],
         }))
       );
+      setActivitiesMap(nextActivitiesMap);
     } catch (err) {
       const error = err instanceof Error ? err : new Error("Failed to fetch objectives");
       setError(error);
@@ -548,4 +550,3 @@ export const useActivities = (projectId: number | null): UseActivitiesReturn => 
     error,
   };
 };
-

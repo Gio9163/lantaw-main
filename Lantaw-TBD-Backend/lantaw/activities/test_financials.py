@@ -4,6 +4,8 @@ from io import StringIO
 
 import pytest
 from django.core.management import call_command
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APIClient
 
 from activities.models import Activity, Objective
@@ -184,3 +186,34 @@ def test_activity_financial_writes_preserve_role_approval_rules():
     assert activity.actual_expense == Decimal("25.00")
     assert activity.balance == Decimal("75.00")
     assert activity.budget_status == "ON_TRACK"
+
+
+@pytest.mark.django_db
+def test_objective_list_prefetches_nested_activities_in_constant_queries():
+    project = create_project("Objective Query Test")
+    admin = User.objects.create_user(
+        email="query-admin@example.com",
+        password="AdminPass123!",
+        role="ADMIN",
+    )
+    for objective_number in range(3):
+        objective = Objective.objects.create(
+            project=project,
+            title=f"Objective {objective_number}",
+        )
+        for activity_number in range(4):
+            Activity.objects.create(
+                objective=objective,
+                title=f"Activity {objective_number}-{activity_number}",
+            )
+
+    client = APIClient()
+    client.force_authenticate(admin)
+    with CaptureQueriesContext(connection) as queries:
+        response = client.get(f"/api/projects/{project.id}/objectives/")
+
+    assert response.status_code == 200
+    results = response.data.get("results", response.data)
+    assert len(results) == 3
+    assert sum(len(objective["activities"]) for objective in results) == 12
+    assert len(queries) <= 4

@@ -122,7 +122,9 @@ class PersonnelViewSet(ApprovalRequiredWriteMixin, viewsets.ModelViewSet):
         user = self.request.user
 
         # Base queryset items that belong to this project
-        qs = Personnel.objects.filter(projectpersonnel__project_id=project_id)
+        qs = Personnel.objects.filter(
+            projectpersonnel__project_id=project_id
+        ).select_related('role', 'department')
 
         if user.role in ["ADMIN", "EXECUTIVE"]:
             return qs.order_by('id')

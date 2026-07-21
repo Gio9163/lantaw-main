@@ -210,6 +210,36 @@ def test_admin_approval_activates_role_membership_and_increments_invitation_once
 
 
 @pytest.mark.django_db
+def test_admin_approval_reuses_existing_membership_without_creating_duplicate(
+    api_client, registration_project, registration_admin
+):
+    invitation = make_invitation(
+        registration_project, registration_admin, "PROJECT_STAFF", "STAFF-CODE"
+    )
+    api_client.post(
+        reverse("register"), registration_payload("PROJECT_STAFF", invitation.code)
+    )
+    registration_request = RegistrationRequest.objects.get()
+    ProjectMembers.objects.create(
+        user=registration_request.user,
+        project=registration_project,
+    )
+    api_client.force_authenticate(registration_admin)
+
+    response = api_client.post(
+        reverse("registration-request-approve", args=[registration_request.id])
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    registration_request.refresh_from_db()
+    assert registration_request.status == "APPROVED"
+    assert ProjectMembers.objects.filter(
+        user=registration_request.user,
+        project=registration_project,
+    ).count() == 1
+
+
+@pytest.mark.django_db
 def test_admin_rejection_requires_reason_and_creates_no_membership(
     api_client, registration_project, registration_admin
 ):

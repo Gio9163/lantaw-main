@@ -119,10 +119,17 @@ class ChangeRequest(models.Model):
 
     @property
     def current_version(self):
+        prefetched = getattr(self, '_prefetched_objects_cache', {}).get('versions')
+        if prefetched is not None:
+            return len(list(prefetched))
         return self.versions.count()
 
     @property
     def latest_version(self):
+        prefetched = getattr(self, '_prefetched_objects_cache', {}).get('versions')
+        if prefetched is not None:
+            versions = list(prefetched)
+            return versions[-1] if versions else None
         return self.versions.order_by('version_number').last()
 
     def __str__(self):

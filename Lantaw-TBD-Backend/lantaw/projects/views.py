@@ -57,14 +57,15 @@ class ProjectViewSet(ApprovalRequiredWriteMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
         project_pk = self.kwargs.get("project_pk")
+        projects = Project.objects.prefetch_related('budget_items').order_by('id')
 
         if user.role == "ADMIN":
-            return Project.objects.all().order_by('id')
+            return projects
         elif user.role == "EXECUTIVE":
-            return Project.objects.filter(projectmembers__user=user).order_by('id')
+            return projects.filter(projectmembers__user=user)
         elif user.role == "PROJECT_STAFF":
             # Staff only sees projects they belong to
-            qs = Project.objects.filter(projectmembers__user=user).order_by('id')
+            qs = projects.filter(projectmembers__user=user)
             if project_pk:
                 return qs.filter(id=project_pk)
             return qs

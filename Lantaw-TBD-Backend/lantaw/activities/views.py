@@ -1,5 +1,6 @@
 from rest_framework import viewsets, permissions
 from rest_framework.exceptions import PermissionDenied
+from django.db.models import Prefetch
 from .models import Objective, Activity
 from .serializers import ObjectiveReadSerializer, ObjectiveWriteSerializer, ActivitySerializer
 from projects.models import Project
@@ -63,7 +64,16 @@ class ObjectiveViewSet(ApprovalRequiredWriteMixin, viewsets.ModelViewSet):
         project_pk = self.kwargs.get("project_pk")
 
         # Get the objectives related to the project 
-        qs = Objective.objects.filter(project_id=project_pk) 
+        activity_queryset = Activity.objects.select_related(
+            "activity_budget_item"
+        ).order_by("id")
+        qs = (
+            Objective.objects.filter(project_id=project_pk)
+            .select_related("project")
+            .prefetch_related(
+                Prefetch("activity_set", queryset=activity_queryset)
+            )
+        )
 
         if user.role == "ADMIN":
             return qs
@@ -154,7 +164,9 @@ class ActivityViewSet(ApprovalRequiredWriteMixin, viewsets.ModelViewSet):
         project_pk = self.kwargs.get("project_pk")
 
         # Get the activities related to the objective
-        qs = Activity.objects.filter(objective_id=objective_pk)
+        qs = Activity.objects.filter(objective_id=objective_pk).select_related(
+            "activity_budget_item", "objective__project"
+        )
         if project_pk is not None:
             qs = qs.filter(objective__project_id=project_pk)
 

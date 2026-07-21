@@ -39,14 +39,17 @@ class ObjectiveReadSerializer(serializers.ModelSerializer):
     objective_status = serializers.SerializerMethodField()
 
     def get_objective_status(self, obj):
-        activities = obj.activity_set.all()
+        activities = list(obj.activity_set.all())
         if not activities:
             return "NOT_STARTED"
 
-        if activities.filter(activity_status="COMPLETED").count() == activities.count():
+        completed_count = sum(
+            activity.activity_status == "COMPLETED" for activity in activities
+        )
+        if completed_count == len(activities):
             return "COMPLETED"
 
-        if activities.filter(activity_status="COMPLETED").exists():
+        if completed_count:
             return "IN_PROGRESS"
 
         return "NOT_STARTED"

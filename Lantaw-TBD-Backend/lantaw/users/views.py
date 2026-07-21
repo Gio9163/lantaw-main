@@ -387,18 +387,30 @@ class RegistrationRequestViewSet(viewsets.ReadOnlyModelViewSet):
                     {"detail": "The requested role is not allowed."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
+            if invitation.project_id != registration_request.project_id:
+                return Response(
+                    {"detail": "The invitation project does not match the request."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             if not invitation.is_available_for(
                 registration_request.requested_role,
                 email=registration_request.user.email,
                 allow_accepted=True,
             ):
+                if invitation.allowed_role != registration_request.requested_role:
+                    detail = "The invitation role does not match the requested role."
+                elif invitation.email and invitation.email.lower() != registration_request.user.email.lower():
+                    detail = "The invitation was issued to a different email address."
+                elif invitation.revoked_at or not invitation.is_active:
+                    detail = "The project invitation has been revoked or deactivated."
+                elif invitation.expires_at and invitation.expires_at <= timezone.now():
+                    detail = "The project invitation expired before this request was approved."
+                elif invitation.used_count >= invitation.max_uses:
+                    detail = "The project invitation has reached its usage limit."
+                else:
+                    detail = "The project invitation is no longer valid."
                 return Response(
-                    {"detail": "The project invitation is no longer valid."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            if invitation.project_id != registration_request.project_id:
-                return Response(
-                    {"detail": "The invitation project does not match the request."},
+                    {"detail": detail},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
@@ -414,11 +426,6 @@ class RegistrationRequestViewSet(viewsets.ReadOnlyModelViewSet):
                 user.account_status = "ACTIVE"
                 user.is_active = True
                 user.save(update_fields=["role", "account_status", "is_active"])
-            if ProjectMembers.objects.filter(user=user, project=registration_request.project).exists():
-                return Response(
-                    {"detail": "This user is already a member of the project."},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
             membership, membership_created = ProjectMembers.objects.get_or_create(
                 user=user,
                 project=registration_request.project,

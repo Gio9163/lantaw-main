@@ -100,7 +100,7 @@ class BudgetLineItemViewSet(ApprovalRequiredWriteMixin, viewsets.ModelViewSet):
         project_pk = self.kwargs.get("project_pk")
 
         # Get the budget line items related to the project 
-        qs = BudgetLineItem.objects.filter(project_id=project_pk) 
+        qs = BudgetLineItem.objects.filter(project_id=project_pk).select_related('project')
 
         if user.role in ["ADMIN", "EXECUTIVE"]:
             return qs.order_by('id')
@@ -177,7 +177,11 @@ class CompensationViewSet(ApprovalRequiredWriteMixin, viewsets.ModelViewSet):
         project_pk = self.kwargs.get("project_pk")
 
         # Get the compensations related to the project's budget line items
-        qs = Compensation.objects.filter(budget_item__project_id=project_pk) 
+        qs = Compensation.objects.filter(
+            budget_item__project_id=project_pk
+        ).select_related(
+            'budget_item__project', 'personnel__role', 'personnel__department'
+        )
 
         if user.role in ["ADMIN", "EXECUTIVE"]:
             return qs.order_by('id')

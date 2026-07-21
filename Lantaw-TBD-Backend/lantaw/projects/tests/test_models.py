@@ -1,7 +1,7 @@
 import pytest 
 from projects.models import Project, ProjectMembers, ProjectPersonnel
 from django.core.exceptions import ValidationError
-from datetime import date
+from django.utils import timezone
 
 """
 Project Test
@@ -131,7 +131,7 @@ def test_create_project_member(staff_user, sample_project):
     project_member = ProjectMembers.objects.create(user=staff_user, project=sample_project)
     assert project_member.user == staff_user
     assert project_member.project == sample_project
-    assert project_member.date_joined.date() == date.today()
+    assert timezone.localdate(project_member.date_joined) == timezone.localdate()
 
 # Test duplicate project member addition
 @pytest.mark.django_db

@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError, PermissionDenied
 from django.db import transaction
+from django.db.models import Prefetch
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
 import decimal
@@ -127,7 +128,14 @@ class ChangeRequestViewSet(viewsets.ModelViewSet):
         if operation_filter:
             qs = qs.filter(operation=operation_filter)
         
-        return qs.order_by('-date_submitted')
+        version_queryset = ChangeRequestVersion.objects.select_related(
+            'reviewed_by'
+        ).order_by('version_number')
+        return qs.select_related(
+            'project', 'submitted_by', 'approved_by'
+        ).prefetch_related(
+            Prefetch('versions', queryset=version_queryset)
+        ).order_by('-date_submitted')
     
     def perform_create(self, serializer):
         user = self.request.user

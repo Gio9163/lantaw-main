@@ -9,6 +9,7 @@ import {
   getPendingRegistrationRequests,
   rejectRegistrationRequest,
 } from "../features/auth/services/registrationRequestsApi";
+import { getApiErrorMessage } from "../utils/apiError";
 
 export default function RegistrationRequests() {
   const [requests, setRequests] = useState<RegistrationRequest[]>([]);
@@ -40,7 +41,10 @@ export default function RegistrationRequests() {
       await refresh();
     } catch (requestError) {
       console.error(requestError);
-      setError("Unable to approve this registration request.");
+      setError(getApiErrorMessage(
+        requestError,
+        "Unable to approve this registration request."
+      ));
     } finally {
       setProcessingId(null);
     }
@@ -56,7 +60,10 @@ export default function RegistrationRequests() {
       await refresh();
     } catch (requestError) {
       console.error(requestError);
-      setError("Unable to reject this registration request.");
+      setError(getApiErrorMessage(
+        requestError,
+        "Unable to reject this registration request."
+      ));
     } finally {
       setProcessingId(null);
     }

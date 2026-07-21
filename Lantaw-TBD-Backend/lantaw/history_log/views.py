@@ -50,7 +50,9 @@ class HistoryLogViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        qs = HistoryLog.objects.all()
+        qs = HistoryLog.objects.select_related(
+            'user', 'project', 'related_change_request'
+        )
 
         project_filter = self.request.query_params.get('project', None)
         if project_filter:
@@ -122,7 +124,9 @@ class ArchivedHistoryLogViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        qs = ArchivedHistoryLog.objects.all()
+        qs = ArchivedHistoryLog.objects.select_related(
+            'user', 'project', 'related_change_request'
+        )
 
         project_filter = self.request.query_params.get('project', None)
         if project_filter:
