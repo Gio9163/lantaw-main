@@ -120,7 +120,15 @@ def revert_change_request(change_request):
         != _normalized_revert_value(change_request.proposed_changes.get(key))
     }
     if not changed_fields:
-        raise ValidationError('No applied field changes were found to revert.')
+        # Older requests may contain display-only changes (for example role_name)
+        # while the persisted foreign-key value is unchanged. There is no database
+        # mutation to undo, but Admin must still be able to recall the approval and
+        # return the request to Staff with corrective feedback.
+        return {
+            'reverted_fields': [],
+            'before_revert': {},
+            'after_revert': {},
+        }
 
     conflicts = [
         key for key in changed_fields

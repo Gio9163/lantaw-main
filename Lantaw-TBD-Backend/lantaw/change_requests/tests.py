@@ -241,3 +241,46 @@ class ChangeRequestWorkflowTests(TestCase):
             format="json",
         )
         self.assertEqual(forbidden_response.status_code, 403)
+
+    def test_admin_can_recall_approved_no_op_update_with_feedback(self):
+        self.client.force_authenticate(user=self.staff)
+        create_response = self.client.post(
+            f"/api/projects/{self.project.id}/change-requests/",
+            {
+                "project": self.project.id,
+                "change_type": "PROJECT",
+                "operation": "UPDATE",
+                "entity_id": self.project.id,
+                "description": "Legacy display-only correction",
+                "current_state": {"name": "Demo Project"},
+                "proposed_changes": {
+                    "name": "Demo Project",
+                    "role_name": "Executive Representative",
+                },
+            },
+            format="json",
+        )
+        request_id = create_response.data["id"]
+
+        self.client.force_authenticate(user=self.admin)
+        approve_response = self.client.post(
+            f"/api/projects/{self.project.id}/change-requests/{request_id}/approve/",
+            {},
+            format="json",
+        )
+        self.assertEqual(approve_response.status_code, 200)
+
+        revert_response = self.client.post(
+            f"/api/projects/{self.project.id}/change-requests/{request_id}/revert/",
+            {"feedback": "Select the correct role and resubmit."},
+            format="json",
+        )
+        self.assertEqual(revert_response.status_code, 200)
+        self.assertEqual(revert_response.data["latest_status"], "PENDING")
+        self.assertTrue(revert_response.data["latest_version"]["requires_revision"])
+        self.assertEqual(
+            revert_response.data["latest_feedback"],
+            "Select the correct role and resubmit.",
+        )
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.name, "Demo Project")
