@@ -65,7 +65,14 @@ class ChangeRequestWorkflowTests(TestCase):
         self.client.force_authenticate(user=self.staff)
         resubmit_response = self.client.post(
             f"/api/projects/{self.project.id}/change-requests/{request_id}/resubmit/",
-            {"description": "Resubmitted request"},
+            {
+                "description": "Resubmitted request",
+                "proposed_changes": {"name": "Corrected project name"},
+                "entity_id": 999999,
+                "operation": "DELETE",
+                "change_type": "ACTIVITY",
+                "current_state": {"name": "Tampered snapshot"},
+            },
             format="json",
         )
 
@@ -73,6 +80,13 @@ class ChangeRequestWorkflowTests(TestCase):
         self.assertEqual(resubmit_response.data["latest_status"], "PENDING")
         self.assertEqual(resubmit_response.data["status"], "PENDING")
         self.assertIsNone(resubmit_response.data["approved_by"])
+        self.assertEqual(resubmit_response.data["proposed_changes"]["name"], "Corrected project name")
+        self.assertEqual(resubmit_response.data["entity_id"], self.project.id)
+        self.assertEqual(resubmit_response.data["operation"], "UPDATE")
+        self.assertEqual(resubmit_response.data["change_type"], "PROJECT")
+        self.assertEqual(resubmit_response.data["current_state"], {"name": "Demo Project"})
+        self.assertEqual(resubmit_response.data["versions"][0]["proposed_changes"]["name"], "Updated name")
+        self.assertEqual(resubmit_response.data["versions"][0]["status"], "REJECTED")
 
         self.client.force_authenticate(user=self.admin)
         second_reject_response = self.client.post(
@@ -96,4 +110,4 @@ class ChangeRequestWorkflowTests(TestCase):
         )
         self.assertEqual(approve_response.status_code, 200)
         self.project.refresh_from_db()
-        self.assertEqual(self.project.name, "Updated name")
+        self.assertEqual(self.project.name, "Corrected project name")

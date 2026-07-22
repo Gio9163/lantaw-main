@@ -290,12 +290,12 @@ class ChangeRequestViewSet(viewsets.ModelViewSet):
         user = request.user
         if user.role != 'PROJECT_STAFF' or change_request.submitted_by_id != user.id:
             raise PermissionDenied('Only the submitting Project Staff user may resubmit this request.')
-        description = request.data.get('description', '').strip() or change_request.description
-        proposed_changes = request.data.get('proposed_changes', change_request.proposed_changes)
-        current_state = request.data.get('current_state', change_request.current_state)
-        entity_id = request.data.get('entity_id', change_request.entity_id)
-        change_type = request.data.get('change_type', change_request.change_type)
-        operation = request.data.get('operation', change_request.operation)
+        requested_description = request.data.get('description')
+        requested_changes = request.data.get('proposed_changes')
+        if requested_description is not None and not isinstance(requested_description, str):
+            return Response({'error': 'Description must be text.'}, status=status.HTTP_400_BAD_REQUEST)
+        if requested_changes is not None and not isinstance(requested_changes, dict):
+            return Response({'error': 'Proposed changes must be an object.'}, status=status.HTTP_400_BAD_REQUEST)
 
         if change_request.latest_version and change_request.latest_version.status == 'APPROVED':
             return Response({'error': 'Approved requests cannot be edited.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -309,6 +309,21 @@ class ChangeRequestViewSet(viewsets.ModelViewSet):
             latest_version = change_request.versions.order_by('version_number').last()
             if latest_version.status != 'REJECTED':
                 return Response({'error': 'Only rejected requests can be resubmitted.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            description = (
+                requested_description.strip()
+                if requested_description and requested_description.strip()
+                else latest_version.description
+            )
+            proposed_changes = (
+                requested_changes
+                if requested_changes is not None
+                else latest_version.proposed_changes
+            )
+            current_state = latest_version.current_state
+            entity_id = latest_version.entity_id
+            change_type = latest_version.change_type
+            operation = latest_version.operation
 
             old_version_number = latest_version.version_number
             old_version_status = latest_version.status

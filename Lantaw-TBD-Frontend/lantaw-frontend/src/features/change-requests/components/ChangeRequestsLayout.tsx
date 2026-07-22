@@ -10,9 +10,10 @@ import { ChangeRequestDetail } from "./ChangeRequestDetail";
 import { ApproveChangeRequestModal } from "./modals/ApproveChangeRequestModal";
 import { RejectChangeRequestModal } from "./modals/RejectChangeRequestModal";
 import { CancelChangeRequestModal } from "./modals/CancelChangeRequestModal";
+import { EditResubmitChangeRequestModal } from "./modals/EditResubmitChangeRequestModal";
 import { Card, CardContent } from "../../../components/common/card";
 import { Pagination } from "../../../components/common/pagination";
-import type { ChangeRequest } from "../../../types/changeRequest";
+import type { ChangeRequest, ChangeRequestResubmitData } from "../../../types/changeRequest";
 import type { Project } from "../../../types/project";
 import api from "../../../api/client";
 
@@ -34,6 +35,7 @@ export const ChangeRequestsLayout: React.FC<ChangeRequestsLayoutProps> = ({
   const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [isResubmitModalOpen, setIsResubmitModalOpen] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   
   // Pagination state
@@ -155,11 +157,10 @@ export const ChangeRequestsLayout: React.FC<ChangeRequestsLayoutProps> = ({
     await changeRequests.fetchChangeRequests(projectId || undefined, filters.filters);
   };
 
-  const handleResubmit = async () => {
+  const handleResubmit = async (data: ChangeRequestResubmitData) => {
     if (!selectedRequest) return;
-    const description = window.prompt("Please enter your updated description for resubmission:", selectedRequest.description || "")?.trim();
-    if (!description) return;
-    await changeRequests.resubmitChangeRequest(selectedRequest.project, selectedRequest.id, description);
+    await changeRequests.resubmitChangeRequest(selectedRequest.project, selectedRequest.id, data);
+    setIsResubmitModalOpen(false);
     const updatedRequest = await changeRequests.fetchChangeRequestById(selectedRequest.project, selectedRequest.id);
     if (updatedRequest) {
       setSelectedRequest(updatedRequest);
@@ -205,7 +206,7 @@ export const ChangeRequestsLayout: React.FC<ChangeRequestsLayoutProps> = ({
           onApprove={isAdmin ? () => handleApproveClick(selectedRequest) : undefined}
           onReject={isAdmin ? () => handleRejectClick(selectedRequest) : undefined}
           onArchive={isAdmin ? () => handleArchive(selectedRequest) : undefined}
-          onResubmit={isProjectStaff ? handleResubmit : undefined}
+          onResubmit={isProjectStaff ? () => setIsResubmitModalOpen(true) : undefined}
           onCancel={isProjectStaff ? () => handleCancelClick(selectedRequest) : undefined}
           showActions={isAdmin}
         />
@@ -226,12 +227,20 @@ export const ChangeRequestsLayout: React.FC<ChangeRequestsLayoutProps> = ({
           </>
         )}
         {isProjectStaff && (
-          <CancelChangeRequestModal
-            open={isCancelModalOpen}
-            onOpenChange={setIsCancelModalOpen}
-            changeRequest={selectedRequest}
-            onCancel={handleCancel}
-          />
+          <>
+            <EditResubmitChangeRequestModal
+              open={isResubmitModalOpen}
+              onOpenChange={setIsResubmitModalOpen}
+              changeRequest={selectedRequest}
+              onResubmit={handleResubmit}
+            />
+            <CancelChangeRequestModal
+              open={isCancelModalOpen}
+              onOpenChange={setIsCancelModalOpen}
+              changeRequest={selectedRequest}
+              onCancel={handleCancel}
+            />
+          </>
         )}
       </>
     );

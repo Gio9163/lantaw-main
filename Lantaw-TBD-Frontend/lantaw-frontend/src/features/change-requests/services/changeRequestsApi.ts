@@ -1,7 +1,7 @@
 // This service layer abstracts all API calls related to change requests.
 
 import api from "../../../api/client";
-import type { ChangeRequest, ChangeRequestCreateData, ChangeRequestFilters } from "../../../types/changeRequest";
+import type { ChangeRequest, ChangeRequestCreateData, ChangeRequestFilters, ChangeRequestResubmitData } from "../../../types/changeRequest";
 
 // Response wrapper type (paginated)
 interface ApiResponse<T> {
@@ -109,10 +109,10 @@ export const changeRequestsApi = {
   },
 
   // Resubmit change request
-  resubmit: async (projectId: number, requestId: number, description: string): Promise<ChangeRequest> => {
+  resubmit: async (projectId: number, requestId: number, data: ChangeRequestResubmitData): Promise<ChangeRequest> => {
     const res = await api.post<ChangeRequest>(
       `/api/projects/${projectId}/change-requests/${requestId}/resubmit/`,
-      { description }
+      data
     );
     return res.data;
   },
@@ -134,4 +134,3 @@ export const changeRequestsApi = {
     return res.data;
   },
 };
-

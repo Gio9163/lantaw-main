@@ -53,6 +53,11 @@ export interface ChangeRequestCreateData {
   proposed_changes: Record<string, unknown>;
 }
 
+export interface ChangeRequestResubmitData {
+  description: string;
+  proposed_changes: Record<string, unknown>;
+}
+
 export interface ChangeRequestFilters {
   status?: ChangeRequest['status'];
   change_type?: ChangeRequest['change_type'];

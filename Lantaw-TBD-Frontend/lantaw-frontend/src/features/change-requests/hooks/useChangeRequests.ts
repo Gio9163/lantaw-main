@@ -1,7 +1,7 @@
 // Custom hook for managing change requests data fetching and mutations.
 
 import { useState, useEffect, useCallback } from "react";
-import type { ChangeRequest, ChangeRequestCreateData, ChangeRequestFilters } from "../../../types/changeRequest";
+import type { ChangeRequest, ChangeRequestCreateData, ChangeRequestFilters, ChangeRequestResubmitData } from "../../../types/changeRequest";
 import { changeRequestsApi } from "../services/changeRequestsApi";
 import { useAuth } from "../../../context/AuthContext";
 
@@ -18,7 +18,7 @@ interface UseChangeRequestsReturn {
   createChangeRequest: (projectId: number, data: ChangeRequestCreateData) => Promise<void>;
   approveChangeRequest: (projectId: number, requestId: number) => Promise<void>;
   rejectChangeRequest: (projectId: number, requestId: number, reason: string) => Promise<void>;
-  resubmitChangeRequest: (projectId: number, requestId: number, description: string) => Promise<void>;
+  resubmitChangeRequest: (projectId: number, requestId: number, data: ChangeRequestResubmitData) => Promise<void>;
   archiveChangeRequest: (projectId: number, requestId: number) => Promise<void>;
   cancelChangeRequest: (projectId: number, requestId: number, reason: string) => Promise<void>;
   
@@ -148,11 +148,11 @@ export const useChangeRequests = (projectId?: number | null): UseChangeRequestsR
   const resubmitChangeRequest = useCallback(async (
     targetProjectId: number,
     requestId: number,
-    description: string
+    data: ChangeRequestResubmitData
   ) => {
     setError(null);
     try {
-      const updatedRequest = await changeRequestsApi.resubmit(targetProjectId, requestId, description);
+      const updatedRequest = await changeRequestsApi.resubmit(targetProjectId, requestId, data);
       setChangeRequests((prev) =>
         prev.map((req) => (req.id === requestId ? updatedRequest : req))
       );
