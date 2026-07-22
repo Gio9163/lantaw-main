@@ -11,6 +11,149 @@ from budget.models import BudgetLineItem, Compensation
 from projects.models import Project
 
 
+def _normalized_revert_value(value):
+    if value is None:
+        return ''
+    if hasattr(value, 'isoformat'):
+        return value.isoformat()
+    return str(value)
+
+
+def _get_revert_target(change_request):
+    """Return the target entity after enforcing that it belongs to the request project."""
+    entity_id = change_request.entity_id
+    project = change_request.project
+    if not project or not entity_id:
+        raise ValidationError('The request target or project is missing and cannot be reverted safely.')
+    lookups = {
+        'PROJECT': lambda: get_object_or_404(Project, pk=entity_id, id=project.pk),
+        'OBJECTIVE': lambda: get_object_or_404(Objective, pk=entity_id, project=project),
+        'ACTIVITY': lambda: get_object_or_404(Activity, pk=entity_id, objective__project=project),
+        'PERSONNEL': lambda: get_object_or_404(
+            Personnel,
+            pk=entity_id,
+            projectpersonnel__project=project,
+        ),
+        'BUDGET': lambda: get_object_or_404(BudgetLineItem, pk=entity_id, project=project),
+        'COMPENSATION': lambda: get_object_or_404(
+            Compensation,
+            pk=entity_id,
+            budget_item__project=project,
+        ),
+        'ROLE': lambda: get_object_or_404(Role, pk=entity_id, project=project),
+        'DEPARTMENT': lambda: get_object_or_404(Department, pk=entity_id, project=project),
+    }
+    lookup = lookups.get(change_request.change_type)
+    if not lookup:
+        raise ValidationError(f"Unsupported change type for revert: {change_request.change_type}")
+    return lookup()
+
+
+def _get_entity_revert_state(change_type, entity):
+    """Return only model fields that the approval workflow can update."""
+    state_builders = {
+        'PROJECT': lambda obj: {
+            'name': obj.name,
+            'project_leader': obj.project_leader,
+            'description': obj.description,
+            'grant_amount': obj.grant_amount,
+            'project_status': obj.project_status,
+            'date_start': obj.date_start,
+            'date_end': obj.date_end,
+        },
+        'OBJECTIVE': lambda obj: {
+            'title': obj.title,
+            'description': obj.description,
+        },
+        'ACTIVITY': lambda obj: {
+            'title': obj.title,
+            'activity_status': obj.activity_status,
+            'activity_budget_item': obj.activity_budget_item_id,
+            'projected_expense': obj.projected_expense,
+            'actual_expense': obj.actual_expense,
+        },
+        'PERSONNEL': lambda obj: {
+            'first_name': obj.first_name,
+            'last_name': obj.last_name,
+            'role': obj.role_id,
+            'department': obj.department_id,
+            'employment_status': obj.employment_status,
+        },
+        'BUDGET': lambda obj: {'name': obj.name},
+        'COMPENSATION': lambda obj: {
+            'type': obj.type,
+            'budget_item': obj.budget_item_id,
+            'personnel': obj.personnel_id,
+            'reason': obj.reason,
+            'monthly_rate': obj.monthly_rate,
+            'duration_months': obj.duration_months,
+            'amount': obj.amount,
+            'date_effective': obj.date_effective,
+        },
+        'ROLE': lambda obj: {'name': obj.name},
+        'DEPARTMENT': lambda obj: {'name': obj.name},
+    }
+    return state_builders[change_type](entity)
+
+
+def revert_change_request(change_request):
+    """Safely reverse an approved UPDATE without overwriting subsequent edits."""
+    if change_request.operation != 'UPDATE':
+        raise ValidationError(
+            'Only approved UPDATE requests can be reverted safely. '
+            'CREATE and DELETE requests require a separate corrective request.'
+        )
+    if not isinstance(change_request.current_state, dict) or not change_request.current_state:
+        raise ValidationError('This request has no original-state snapshot and cannot be reverted safely.')
+    if not isinstance(change_request.proposed_changes, dict):
+        raise ValidationError('This request has no applied-state snapshot and cannot be reverted safely.')
+
+    entity = _get_revert_target(change_request)
+    actual_state = _get_entity_revert_state(change_request.change_type, entity)
+    expected_state = {**change_request.current_state, **change_request.proposed_changes}
+
+    changed_fields = {
+        key for key in actual_state
+        if key in change_request.current_state
+        and key in change_request.proposed_changes
+        and _normalized_revert_value(change_request.current_state.get(key))
+        != _normalized_revert_value(change_request.proposed_changes.get(key))
+    }
+    if not changed_fields:
+        raise ValidationError('No applied field changes were found to revert.')
+
+    conflicts = [
+        key for key in changed_fields
+        if _normalized_revert_value(actual_state.get(key))
+        != _normalized_revert_value(expected_state.get(key))
+    ]
+    if conflicts:
+        fields = ', '.join(sorted(conflicts))
+        raise ValidationError(
+            f'Cannot revert because the approved data was modified afterward: {fields}.'
+        )
+
+    original_values = {
+        key: change_request.current_state[key]
+        for key in changed_fields
+    }
+    _update_entity(
+        change_request.change_type,
+        change_request.entity_id,
+        original_values,
+        expected_state,
+    )
+    return {
+        'reverted_fields': sorted(changed_fields),
+        'before_revert': {
+            key: _normalized_revert_value(actual_state.get(key)) for key in changed_fields
+        },
+        'after_revert': {
+            key: _normalized_revert_value(original_values.get(key)) for key in changed_fields
+        },
+    }
+
+
 def apply_change_request(change_request):
     """
     Apply a change request to the actual project data.

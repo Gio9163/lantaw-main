@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError, PermissionDenied
 from django.db import transaction
 from django.db.models import Prefetch
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.utils import timezone
 from django.shortcuts import get_object_or_404
 import decimal
@@ -11,7 +12,7 @@ import decimal
 from .models import ChangeRequest, ChangeRequestVersion
 from .serializers import ChangeRequestSerializer, ChangeRequestVersionSerializer
 from .permissions import IsProjectStaffOrAdmin, IsAdminOnly, CanSubmitChangeRequest
-from .utils import apply_change_request
+from .utils import apply_change_request, revert_change_request
 from projects.models import Project
 from history_log.services import log_history
 
@@ -88,7 +89,7 @@ class ChangeRequestViewSet(viewsets.ModelViewSet):
         """
         Assign permissions based on action.
         """
-        if self.action in ['approve', 'reject']:
+        if self.action in ['approve', 'reject', 'revert']:
             return [IsAdminOnly()]
         elif self.action == 'create':
             return [CanSubmitChangeRequest()]
@@ -197,12 +198,16 @@ class ChangeRequestViewSet(viewsets.ModelViewSet):
 
         # (Temporary debug logging removed)
 
+        if change_request.latest_version and change_request.latest_version.requires_revision:
+            return Response({'error': 'Project Staff must revise this reverted request before it can be approved.'}, status=status.HTTP_400_BAD_REQUEST)
         if change_request.latest_version and not is_reviewable_status(change_request.latest_version.status):
             return Response({'error': f'Cannot approve change request with status {change_request.latest_version.status}'}, status=status.HTTP_400_BAD_REQUEST)
 
         with transaction.atomic():
             change_request = ChangeRequest.objects.select_for_update().get(pk=change_request.pk)
             latest_version = change_request.versions.order_by('version_number').last()
+            if latest_version and latest_version.requires_revision:
+                return Response({'error': 'Project Staff must revise this reverted request before it can be approved.'}, status=status.HTTP_400_BAD_REQUEST)
             if latest_version and not is_reviewable_status(latest_version.status):
                 return Response({'error': f'Change request status changed to {latest_version.status}'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -250,6 +255,8 @@ class ChangeRequestViewSet(viewsets.ModelViewSet):
         if not rejection_reason:
             return Response({'error': 'Feedback is required when rejecting a change request.'}, status=status.HTTP_400_BAD_REQUEST)
 
+        if change_request.latest_version and change_request.latest_version.requires_revision:
+            return Response({'error': 'This reverted request is already awaiting Project Staff revision.'}, status=status.HTTP_400_BAD_REQUEST)
         if change_request.latest_version and not is_reviewable_status(change_request.latest_version.status):
             return Response({'error': f'Cannot reject change request with status {change_request.latest_version.status}'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -257,6 +264,8 @@ class ChangeRequestViewSet(viewsets.ModelViewSet):
         with transaction.atomic():
             change_request = ChangeRequest.objects.select_for_update().get(pk=change_request.pk)
             latest_version = change_request.versions.order_by('version_number').last()
+            if latest_version and latest_version.requires_revision:
+                return Response({'error': 'This reverted request is already awaiting Project Staff revision.'}, status=status.HTTP_400_BAD_REQUEST)
             if latest_version and not is_reviewable_status(latest_version.status):
                 return Response({'error': f'Change request status changed to {latest_version.status}'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -297,18 +306,27 @@ class ChangeRequestViewSet(viewsets.ModelViewSet):
         if requested_changes is not None and not isinstance(requested_changes, dict):
             return Response({'error': 'Proposed changes must be an object.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        if change_request.latest_version and change_request.latest_version.status == 'APPROVED':
+        latest_version = change_request.latest_version
+        if latest_version and latest_version.status == 'APPROVED':
             return Response({'error': 'Approved requests cannot be edited.'}, status=status.HTTP_400_BAD_REQUEST)
-        if change_request.latest_version and change_request.latest_version.status != 'REJECTED':
-            return Response({'error': 'Only rejected requests can be resubmitted.'}, status=status.HTTP_400_BAD_REQUEST)
+        can_resubmit = latest_version and (
+            latest_version.status == 'REJECTED'
+            or (latest_version.status == 'PENDING' and latest_version.requires_revision)
+        )
+        if not can_resubmit:
+            return Response({'error': 'Only rejected or reverted requests requiring revision can be resubmitted.'}, status=status.HTTP_400_BAD_REQUEST)
 
         with transaction.atomic():
             # Lock the ChangeRequest row.
             change_request = ChangeRequest.objects.select_for_update().get(pk=change_request.pk)
 
             latest_version = change_request.versions.order_by('version_number').last()
-            if latest_version.status != 'REJECTED':
-                return Response({'error': 'Only rejected requests can be resubmitted.'}, status=status.HTTP_400_BAD_REQUEST)
+            can_resubmit = latest_version and (
+                latest_version.status == 'REJECTED'
+                or (latest_version.status == 'PENDING' and latest_version.requires_revision)
+            )
+            if not can_resubmit:
+                return Response({'error': 'Only rejected or reverted requests requiring revision can be resubmitted.'}, status=status.HTTP_400_BAD_REQUEST)
 
             description = (
                 requested_description.strip()
@@ -346,6 +364,7 @@ class ChangeRequestViewSet(viewsets.ModelViewSet):
                 reviewed_by=None,
                 reviewed_at=None,
                 admin_feedback='',
+                requires_revision=False,
             )
 
             # Update parent ChangeRequest to represent a fresh review cycle.
@@ -384,6 +403,85 @@ class ChangeRequestViewSet(viewsets.ModelViewSet):
                 description=f"{user.get_full_name() or user.email} resubmitted {change_request.request_code} version {new_version.version_number}",
                 change_type='CHANGE_REQUEST',
                 entity_id=change_request.id,
+                related_change_request=change_request,
+            )
+
+            serializer = self.get_serializer(change_request)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'], url_path='revert')
+    def revert(self, request, pk=None, project_pk=None):
+        """Reverse an approved UPDATE and return it to Staff as a pending revision."""
+        feedback = request.data.get('feedback', '')
+        if not isinstance(feedback, str) or not feedback.strip():
+            return Response(
+                {'error': 'Feedback is required when reverting an approved request.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        feedback = feedback.strip()
+
+        with transaction.atomic():
+            change_request = ChangeRequest.objects.select_for_update().get(
+                pk=self.get_object().pk
+            )
+            latest_version = change_request.versions.select_for_update().order_by(
+                'version_number'
+            ).last()
+            if not latest_version or latest_version.status != 'APPROVED':
+                return Response(
+                    {'error': 'Only the latest approved request version can be reverted.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            try:
+                revert_result = revert_change_request(change_request)
+            except DjangoValidationError as exc:
+                message = '; '.join(exc.messages) if exc.messages else str(exc)
+                return Response({'error': message}, status=status.HTTP_400_BAD_REQUEST)
+            now = timezone.now()
+            revision_version = ChangeRequestVersion.objects.create(
+                change_request=change_request,
+                version_number=latest_version.version_number + 1,
+                status='PENDING',
+                description=latest_version.description,
+                admin_feedback=feedback,
+                requires_revision=True,
+                change_type=latest_version.change_type,
+                operation=latest_version.operation,
+                entity_id=latest_version.entity_id,
+                current_state=latest_version.current_state,
+                proposed_changes=latest_version.proposed_changes,
+                submitted_at=now,
+                reviewed_at=now,
+                reviewed_by=request.user,
+            )
+
+            change_request.status = 'PENDING'
+            change_request.approved_by = None
+            change_request.date_processed = None
+            change_request.rejection_reason = feedback
+            change_request.save(update_fields=[
+                'status',
+                'approved_by',
+                'date_processed',
+                'rejection_reason',
+                'updated_at',
+            ])
+
+            log_history(
+                user=request.user,
+                action='REVERT',
+                module='CHANGE_REQUEST',
+                project=change_request.project,
+                object_name=change_request.request_code,
+                description=(
+                    f"{request.user.get_full_name() or request.user.email} reverted "
+                    f"{change_request.request_code} version {latest_version.version_number}: {feedback}"
+                ),
+                change_type='CHANGE_REQUEST',
+                entity_id=change_request.id,
+                old_state=revert_result['before_revert'],
+                new_state=revert_result['after_revert'],
                 related_change_request=change_request,
             )
 

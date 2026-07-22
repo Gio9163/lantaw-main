@@ -4,6 +4,7 @@ export interface ChangeRequestVersion {
   status: 'PENDING' | 'REJECTED' | 'RESUBMITTED' | 'APPROVED' | 'ARCHIVED';
   description: string;
   admin_feedback?: string;
+  requires_revision?: boolean;
   change_type: ChangeRequest['change_type'];
   operation: ChangeRequest['operation'];
   entity_id?: number | null;

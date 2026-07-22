@@ -9,6 +9,7 @@ import { ChangeRequestCard } from "./ChangeRequestCard";
 import { ChangeRequestDetail } from "./ChangeRequestDetail";
 import { ApproveChangeRequestModal } from "./modals/ApproveChangeRequestModal";
 import { RejectChangeRequestModal } from "./modals/RejectChangeRequestModal";
+import { RevertChangeRequestModal } from "./modals/RevertChangeRequestModal";
 import { CancelChangeRequestModal } from "./modals/CancelChangeRequestModal";
 import { EditResubmitChangeRequestModal } from "./modals/EditResubmitChangeRequestModal";
 import { Card, CardContent } from "../../../components/common/card";
@@ -34,6 +35,7 @@ export const ChangeRequestsLayout: React.FC<ChangeRequestsLayoutProps> = ({
   const [selectedRequest, setSelectedRequest] = useState<ChangeRequest | null>(null);
   const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [isRevertModalOpen, setIsRevertModalOpen] = useState(false);
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [isResubmitModalOpen, setIsResubmitModalOpen] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -122,6 +124,11 @@ export const ChangeRequestsLayout: React.FC<ChangeRequestsLayoutProps> = ({
     setIsRejectModalOpen(true);
   };
 
+  const handleRevertClick = (request: ChangeRequest) => {
+    setSelectedRequest(request);
+    setIsRevertModalOpen(true);
+  };
+
   const handleCancelClick = (request: ChangeRequest) => {
     setSelectedRequest(request);
     setIsCancelModalOpen(true);
@@ -147,6 +154,22 @@ export const ChangeRequestsLayout: React.FC<ChangeRequestsLayoutProps> = ({
     if (updatedRequest) {
       setSelectedRequest(updatedRequest);
     }
+  };
+
+  const handleRevert = async (feedback: string) => {
+    if (!selectedRequest) return;
+    await changeRequests.revertChangeRequest(
+      selectedRequest.project,
+      selectedRequest.id,
+      feedback
+    );
+    setIsRevertModalOpen(false);
+    await changeRequests.fetchChangeRequests(projectId || undefined, filters.filters);
+    const updatedRequest = await changeRequests.fetchChangeRequestById(
+      selectedRequest.project,
+      selectedRequest.id
+    );
+    if (updatedRequest) setSelectedRequest(updatedRequest);
   };
 
   const handleArchive = async (request: ChangeRequest) => {
@@ -206,6 +229,7 @@ export const ChangeRequestsLayout: React.FC<ChangeRequestsLayoutProps> = ({
           onApprove={isAdmin ? () => handleApproveClick(selectedRequest) : undefined}
           onReject={isAdmin ? () => handleRejectClick(selectedRequest) : undefined}
           onArchive={isAdmin ? () => handleArchive(selectedRequest) : undefined}
+          onRevert={isAdmin ? () => handleRevertClick(selectedRequest) : undefined}
           onResubmit={isProjectStaff ? () => setIsResubmitModalOpen(true) : undefined}
           onCancel={isProjectStaff ? () => handleCancelClick(selectedRequest) : undefined}
           showActions={isAdmin}
@@ -223,6 +247,12 @@ export const ChangeRequestsLayout: React.FC<ChangeRequestsLayoutProps> = ({
               onOpenChange={setIsRejectModalOpen}
               changeRequest={selectedRequest}
               onReject={handleReject}
+            />
+            <RevertChangeRequestModal
+              open={isRevertModalOpen}
+              onOpenChange={setIsRevertModalOpen}
+              changeRequest={selectedRequest}
+              onRevert={handleRevert}
             />
           </>
         )}
@@ -292,6 +322,7 @@ export const ChangeRequestsLayout: React.FC<ChangeRequestsLayoutProps> = ({
                 onApprove={isAdmin ? handleApproveClick : undefined}
                 onReject={isAdmin ? handleRejectClick : undefined}
                 onArchive={isAdmin ? handleArchive : undefined}
+                onRevert={isAdmin ? handleRevertClick : undefined}
                 onCancel={isProjectStaff ? handleCancelClick : undefined}
                 showActions={isAdmin}
               />

@@ -5,6 +5,7 @@ from rest_framework.test import APIClient
 
 from projects.models import Project, ProjectMembers
 from users.models import User
+from history_log.models import HistoryLog
 
 
 class ChangeRequestWorkflowTests(TestCase):
@@ -111,3 +112,132 @@ class ChangeRequestWorkflowTests(TestCase):
         self.assertEqual(approve_response.status_code, 200)
         self.project.refresh_from_db()
         self.assertEqual(self.project.name, "Corrected project name")
+
+    def test_admin_can_revert_approved_update_for_staff_revision(self):
+        self.client.force_authenticate(user=self.staff)
+        create_response = self.client.post(
+            f"/api/projects/{self.project.id}/change-requests/",
+            {
+                "project": self.project.id,
+                "change_type": "PROJECT",
+                "operation": "UPDATE",
+                "entity_id": self.project.id,
+                "description": "Rename project",
+                "current_state": {"name": "Demo Project"},
+                "proposed_changes": {"name": "Incorrect approved name"},
+            },
+            format="json",
+        )
+        request_id = create_response.data["id"]
+
+        self.client.force_authenticate(user=self.admin)
+        approve_response = self.client.post(
+            f"/api/projects/{self.project.id}/change-requests/{request_id}/approve/",
+            {},
+            format="json",
+        )
+        self.assertEqual(approve_response.status_code, 200)
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.name, "Incorrect approved name")
+
+        revert_response = self.client.post(
+            f"/api/projects/{self.project.id}/change-requests/{request_id}/revert/",
+            {"feedback": "The project name is incomplete. Please correct it."},
+            format="json",
+        )
+        self.assertEqual(revert_response.status_code, 200)
+        self.assertEqual(revert_response.data["status"], "PENDING")
+        self.assertEqual(revert_response.data["latest_status"], "PENDING")
+        self.assertTrue(revert_response.data["latest_version"]["requires_revision"])
+        self.assertEqual(
+            revert_response.data["latest_feedback"],
+            "The project name is incomplete. Please correct it.",
+        )
+        self.assertEqual(revert_response.data["versions"][0]["status"], "APPROVED")
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.name, "Demo Project")
+        self.assertTrue(
+            HistoryLog.objects.filter(
+                related_change_request_id=request_id,
+                action="REVERT",
+            ).exists()
+        )
+
+        blocked_approval = self.client.post(
+            f"/api/projects/{self.project.id}/change-requests/{request_id}/approve/",
+            {},
+            format="json",
+        )
+        self.assertEqual(blocked_approval.status_code, 400)
+
+        self.client.force_authenticate(user=self.staff)
+        resubmit_response = self.client.post(
+            f"/api/projects/{self.project.id}/change-requests/{request_id}/resubmit/",
+            {
+                "description": "Corrected project rename",
+                "proposed_changes": {"name": "Correct final name"},
+            },
+            format="json",
+        )
+        self.assertEqual(resubmit_response.status_code, 200)
+        self.assertFalse(resubmit_response.data["latest_version"]["requires_revision"])
+        self.assertEqual(resubmit_response.data["current_version"], 3)
+
+        self.client.force_authenticate(user=self.admin)
+        final_approval = self.client.post(
+            f"/api/projects/{self.project.id}/change-requests/{request_id}/approve/",
+            {},
+            format="json",
+        )
+        self.assertEqual(final_approval.status_code, 200)
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.name, "Correct final name")
+
+    def test_revert_requires_admin_feedback_and_unchanged_applied_data(self):
+        self.client.force_authenticate(user=self.staff)
+        create_response = self.client.post(
+            f"/api/projects/{self.project.id}/change-requests/",
+            {
+                "project": self.project.id,
+                "change_type": "PROJECT",
+                "operation": "UPDATE",
+                "entity_id": self.project.id,
+                "description": "Rename project",
+                "current_state": {"name": "Demo Project"},
+                "proposed_changes": {"name": "Approved name"},
+            },
+            format="json",
+        )
+        request_id = create_response.data["id"]
+
+        self.client.force_authenticate(user=self.admin)
+        self.client.post(
+            f"/api/projects/{self.project.id}/change-requests/{request_id}/approve/",
+            {},
+            format="json",
+        )
+        missing_feedback = self.client.post(
+            f"/api/projects/{self.project.id}/change-requests/{request_id}/revert/",
+            {},
+            format="json",
+        )
+        self.assertEqual(missing_feedback.status_code, 400)
+
+        self.project.name = "A later independent edit"
+        self.project.save(update_fields=["name"])
+        conflict_response = self.client.post(
+            f"/api/projects/{self.project.id}/change-requests/{request_id}/revert/",
+            {"feedback": "Undo the rename"},
+            format="json",
+        )
+        self.assertEqual(conflict_response.status_code, 400)
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.name, "A later independent edit")
+
+        self.client.force_authenticate(user=self.staff)
+        forbidden_response = self.client.post(
+            f"/api/projects/{self.project.id}/change-requests/{request_id}/revert/",
+            {"feedback": "Staff cannot revert approvals"},
+            format="json",
+        )
+        self.assertEqual(forbidden_response.status_code, 403)

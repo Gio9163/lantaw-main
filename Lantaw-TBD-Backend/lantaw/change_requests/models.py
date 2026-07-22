@@ -152,6 +152,10 @@ class ChangeRequestVersion(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
     description = models.TextField(blank=True, default='')
     admin_feedback = models.TextField(blank=True, default='')
+    requires_revision = models.BooleanField(
+        default=False,
+        help_text='The applied change was reverted and must be revised by Project Staff before review.',
+    )
 
     change_type = models.CharField(max_length=20, choices=ChangeRequest.CHANGE_TYPE_CHOICES)
     operation = models.CharField(max_length=10, choices=ChangeRequest.OPERATION_CHOICES)

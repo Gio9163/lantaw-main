@@ -2,7 +2,7 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../components/common/card";
 import { Button } from "../../../components/common/button";
 import { Badge } from "../../../components/common/badge";
-import { Check, X, ArrowLeft, Calendar, User, XCircle, Archive, Pencil } from "lucide-react";
+import { Check, X, ArrowLeft, Calendar, User, XCircle, Archive, Pencil, RotateCcw } from "lucide-react";
 import type { ChangeRequest } from "../../../types/changeRequest";
 import { getStatusStyle, getOperationStyle, getChangeTypeDisplayName } from "../utils/statusHelpers";
 import { formatDate } from "../../../utils/formatHelpers";
@@ -15,6 +15,7 @@ interface ChangeRequestDetailProps {
   onApprove?: () => void;
   onReject?: () => void;
   onArchive?: () => void;
+  onRevert?: () => void;
   onResubmit?: () => void;
   onCancel?: () => void;
   showActions?: boolean;
@@ -26,6 +27,7 @@ export const ChangeRequestDetail: React.FC<ChangeRequestDetailProps> = ({
   onApprove,
   onReject,
   onArchive,
+  onRevert,
   onResubmit,
   onCancel,
   showActions = false,
@@ -35,8 +37,11 @@ export const ChangeRequestDetail: React.FC<ChangeRequestDetailProps> = ({
   const statusStyle = getStatusStyle(currentStatus);
   const operationStyle = getOperationStyle(changeRequest.operation);
   const changeTypeName = getChangeTypeDisplayName(changeRequest.change_type);
-  const canReview = currentStatus === 'PENDING' || currentStatus === 'RESUBMITTED';
-  const canArchive = !canReview && currentStatus !== 'ARCHIVED';
+  const requiresRevision = Boolean(changeRequest.latest_version?.requires_revision);
+  const isPending = currentStatus === 'PENDING' || currentStatus === 'RESUBMITTED';
+  const canReview = isPending && !requiresRevision;
+  const canArchive = !isPending && currentStatus !== 'ARCHIVED';
+  const canRevert = currentStatus === 'APPROVED' && changeRequest.operation === 'UPDATE';
   const isProjectStaff = user?.role === "Project Staff";
   const isOwnRequest = user?.id !== undefined && String(changeRequest.submitted_by) === user.id;
   const canCancel = isProjectStaff && isOwnRequest && currentStatus === 'PENDING';
@@ -75,7 +80,13 @@ export const ChangeRequestDetail: React.FC<ChangeRequestDetailProps> = ({
               Archive
             </Button>
           )}
-          {isProjectStaff && currentStatus === 'REJECTED' && onResubmit && (
+          {showActions && canRevert && onRevert && (
+            <Button variant="destructive" onClick={onRevert}>
+              <RotateCcw className="h-4 w-4 mr-2" />
+              Revert Change
+            </Button>
+          )}
+          {isProjectStaff && (currentStatus === 'REJECTED' || requiresRevision) && onResubmit && (
             <Button variant="outline" onClick={onResubmit}>
               <Pencil className="h-4 w-4 mr-2" />
               Edit & Resubmit
@@ -186,6 +197,7 @@ export const ChangeRequestDetail: React.FC<ChangeRequestDetailProps> = ({
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge variant="outline">Version {version.version_number}</Badge>
                       <Badge className={getStatusStyle(version.status).badge}>{getStatusStyle(version.status).text}</Badge>
+                      {version.requires_revision && <Badge variant="outline">Staff revision required</Badge>}
                     </div>
                     <p className="mt-2 text-sm whitespace-pre-wrap">{version.description}</p>
                     {version.admin_feedback && (

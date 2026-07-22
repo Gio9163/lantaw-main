@@ -18,6 +18,7 @@ interface UseChangeRequestsReturn {
   createChangeRequest: (projectId: number, data: ChangeRequestCreateData) => Promise<void>;
   approveChangeRequest: (projectId: number, requestId: number) => Promise<void>;
   rejectChangeRequest: (projectId: number, requestId: number, reason: string) => Promise<void>;
+  revertChangeRequest: (projectId: number, requestId: number, feedback: string) => Promise<void>;
   resubmitChangeRequest: (projectId: number, requestId: number, data: ChangeRequestResubmitData) => Promise<void>;
   archiveChangeRequest: (projectId: number, requestId: number) => Promise<void>;
   cancelChangeRequest: (projectId: number, requestId: number, reason: string) => Promise<void>;
@@ -144,6 +145,25 @@ export const useChangeRequests = (projectId?: number | null): UseChangeRequestsR
     }
   }, []);
 
+  const revertChangeRequest = useCallback(async (
+    targetProjectId: number,
+    requestId: number,
+    feedback: string
+  ) => {
+    setError(null);
+    try {
+      const updatedRequest = await changeRequestsApi.revert(targetProjectId, requestId, feedback);
+      setChangeRequests((prev) =>
+        prev.map((req) => (req.id === requestId ? updatedRequest : req))
+      );
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error("Failed to revert change request");
+      setError(error);
+      console.error("Failed to revert change request:", err);
+      throw error;
+    }
+  }, []);
+
   // Cancel change request
   const resubmitChangeRequest = useCallback(async (
     targetProjectId: number,
@@ -216,6 +236,7 @@ export const useChangeRequests = (projectId?: number | null): UseChangeRequestsR
     createChangeRequest,
     approveChangeRequest,
     rejectChangeRequest,
+    revertChangeRequest,
     resubmitChangeRequest,
     archiveChangeRequest,
     cancelChangeRequest,

@@ -108,6 +108,15 @@ export const changeRequestsApi = {
     return res.data;
   },
 
+  // Revert an approved update and return it for Staff revision
+  revert: async (projectId: number, requestId: number, feedback: string): Promise<ChangeRequest> => {
+    const res = await api.post<ChangeRequest>(
+      `/api/projects/${projectId}/change-requests/${requestId}/revert/`,
+      { feedback }
+    );
+    return res.data;
+  },
+
   // Resubmit change request
   resubmit: async (projectId: number, requestId: number, data: ChangeRequestResubmitData): Promise<ChangeRequest> => {
     const res = await api.post<ChangeRequest>(

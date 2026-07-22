@@ -15,6 +15,7 @@ class ChangeRequestVersionSerializer(serializers.ModelSerializer):
             'status',
             'description',
             'admin_feedback',
+            'requires_revision',
             'change_type',
             'operation',
             'entity_id',
@@ -25,7 +26,7 @@ class ChangeRequestVersionSerializer(serializers.ModelSerializer):
             'reviewed_by',
             'reviewed_by_name',
         ]
-        read_only_fields = ['id', 'version_number', 'submitted_at', 'reviewed_at', 'reviewed_by', 'reviewed_by_name']
+        read_only_fields = ['id', 'version_number', 'submitted_at', 'reviewed_at', 'reviewed_by', 'reviewed_by_name', 'requires_revision']
 
     def get_reviewed_by_name(self, obj):
         if obj.reviewed_by:
